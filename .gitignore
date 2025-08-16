@@ -1,0 +1,4 @@
+/venv
+.kiro
+/anafis.egg-info
+*.pyc

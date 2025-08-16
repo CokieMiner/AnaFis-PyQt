@@ -1,0 +1,3 @@
+@echo off
+echo 🔄 Running activation script...
+call scripts\activate_dev.bat

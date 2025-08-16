@@ -1,0 +1,36 @@
+# ANAFIS Requirements
+# This file is generated from pyproject.toml for convenience
+# For development, use: pip install -e .[dev]
+
+# GUI Framework
+PyQt6>=6.8.0
+
+# Core Scientific Computing
+numpy>=2.1.0
+pandas>=2.2.0
+scipy>=1.14.0
+
+# Symbolic Mathematics
+sympy>=1.13.0
+
+# Curve Fitting and Statistics
+lmfit>=1.3.0
+emcee>=3.1.6
+
+# Units and Physical Quantities
+pint>=0.24.0
+
+# Data Storage
+h5py>=3.12.0
+
+# Additional Scientific Libraries
+matplotlib>=3.9.0
+vispy>=0.15.0
+numexpr>=2.10.0
+networkx>=3.4.0
+
+# LaTeX Support
+latex2sympy2>=1.9.1
+
+# Internationalization
+babel>=2.16.0
