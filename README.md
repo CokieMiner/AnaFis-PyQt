@@ -123,7 +123,6 @@ The project uses several tools for code quality:
 - **Black**: Code formatting
 - **Flake8**: Linting
 - **MyPy**: Type checking
-- **Pre-commit**: Git hooks for quality checks
 
 ```bash
 # Format code
