@@ -10,11 +10,13 @@ import logging.handlers
 import sys
 from pathlib import Path
 from typing import Dict, Any, Optional
-from datetime import datetime
+
+# from datetime import datetime  # Not currently used
 
 
-def create_log_formatter(include_timestamp: bool = True,
-                        include_module: bool = True) -> logging.Formatter:
+def create_log_formatter(
+    include_timestamp: bool = True, include_module: bool = True
+) -> logging.Formatter:
     """
     Create a log formatter with configurable components.
 
@@ -30,10 +32,7 @@ def create_log_formatter(include_timestamp: bool = True,
     if include_timestamp:
         format_parts.append("%(asctime)s")
 
-    format_parts.extend([
-        "%(levelname)-8s",
-        "%(name)s"
-    ])
+    format_parts.extend(["%(levelname)-8s", "%(name)s"])
 
     if include_module:
         format_parts.append("%(module)s:%(lineno)d")
@@ -42,14 +41,12 @@ def create_log_formatter(include_timestamp: bool = True,
 
     format_string = " - ".join(format_parts)
 
-    return logging.Formatter(
-        fmt=format_string,
-        datefmt="%Y-%m-%d %H:%M:%S"
-    )
+    return logging.Formatter(fmt=format_string, datefmt="%Y-%m-%d %H:%M:%S")
 
 
-def create_console_handler(level: int = logging.INFO,
-                          formatter: Optional[logging.Formatter] = None) -> logging.StreamHandler:
+def create_console_handler(
+    level: int = logging.INFO, formatter: Optional[logging.Formatter] = None
+) -> logging.StreamHandler:
     """
     Create a console handler for logging output.
 
@@ -70,11 +67,13 @@ def create_console_handler(level: int = logging.INFO,
     return handler
 
 
-def create_file_handler(log_file_path: Path,
-                       level: int = logging.DEBUG,
-                       max_bytes: int = 10 * 1024 * 1024,  # 10MB
-                       backup_count: int = 5,
-                       formatter: Optional[logging.Formatter] = None) -> logging.handlers.RotatingFileHandler:
+def create_file_handler(
+    log_file_path: Path,
+    level: int = logging.DEBUG,
+    max_bytes: int = 10 * 1024 * 1024,  # 10MB
+    backup_count: int = 5,
+    formatter: Optional[logging.Formatter] = None,
+) -> logging.handlers.RotatingFileHandler:
     """
     Create a rotating file handler for logging output.
 
@@ -95,7 +94,7 @@ def create_file_handler(log_file_path: Path,
         filename=str(log_file_path),
         maxBytes=max_bytes,
         backupCount=backup_count,
-        encoding='utf-8'
+        encoding="utf-8",
     )
     handler.setLevel(level)
 
@@ -116,18 +115,21 @@ def get_default_log_directory() -> Path:
     if sys.platform == "win32":
         # Windows: Use AppData/Local
         import os
-        app_data = os.environ.get('LOCALAPPDATA', os.path.expanduser('~'))
+
+        app_data = os.environ.get("LOCALAPPDATA", os.path.expanduser("~"))
         return Path(app_data) / "ANAFIS" / "logs"
     else:
         # Unix-like: Use ~/.local/share
         return Path.home() / ".local" / "share" / "anafis" / "logs"
 
 
-def create_logger_config(name: str,
-                        level: int = logging.INFO,
-                        console_output: bool = True,
-                        file_output: bool = True,
-                        log_directory: Optional[Path] = None) -> Dict[str, Any]:
+def create_logger_config(
+    name: str,
+    level: int = logging.INFO,
+    console_output: bool = True,
+    file_output: bool = True,
+    log_directory: Optional[Path] = None,
+) -> Dict[str, Any]:
     """
     Create a logger configuration dictionary.
 
@@ -145,27 +147,33 @@ def create_logger_config(name: str,
         log_directory = get_default_log_directory()
 
     config = {
-        'name': name,
-        'level': level,
-        'handlers': [],
-        'log_directory': log_directory
+        "name": name,
+        "level": level,
+        "handlers": [],
+        "log_directory": log_directory,
     }
 
     if console_output:
-        config['handlers'].append({
-            'type': 'console',
-            'level': logging.INFO,
-            'formatter': create_log_formatter(include_timestamp=False)
-        })
+        config["handlers"].append(
+            {
+                "type": "console",
+                "level": logging.INFO,
+                "formatter": create_log_formatter(include_timestamp=False),
+            }
+        )
 
     if file_output:
         log_file = log_directory / f"{name}.log"
-        config['handlers'].append({
-            'type': 'file',
-            'path': log_file,
-            'level': logging.DEBUG,
-            'formatter': create_log_formatter(include_timestamp=True, include_module=True)
-        })
+        config["handlers"].append(
+            {
+                "type": "file",
+                "path": log_file,
+                "level": logging.DEBUG,
+                "formatter": create_log_formatter(
+                    include_timestamp=True, include_module=True
+                ),
+            }
+        )
 
     return config
 
@@ -180,24 +188,23 @@ def setup_logger(config: Dict[str, Any]) -> logging.Logger:
     Returns:
         Configured logger instance
     """
-    logger = logging.getLogger(config['name'])
-    logger.setLevel(config['level'])
+    logger = logging.getLogger(config["name"])
+    logger.setLevel(config["level"])
 
     # Clear any existing handlers
     logger.handlers.clear()
 
     # Add configured handlers
-    for handler_config in config['handlers']:
-        if handler_config['type'] == 'console':
+    for handler_config in config["handlers"]:
+        if handler_config["type"] == "console":
             handler = create_console_handler(
-                level=handler_config['level'],
-                formatter=handler_config['formatter']
+                level=handler_config["level"], formatter=handler_config["formatter"]
             )
-        elif handler_config['type'] == 'file':
+        elif handler_config["type"] == "file":
             handler = create_file_handler(
-                log_file_path=handler_config['path'],
-                level=handler_config['level'],
-                formatter=handler_config['formatter']
+                log_file_path=handler_config["path"],
+                level=handler_config["level"],
+                formatter=handler_config["formatter"],
             )
         else:
             continue
@@ -210,8 +217,9 @@ def setup_logger(config: Dict[str, Any]) -> logging.Logger:
     return logger
 
 
-def setup_application_logging(debug_mode: bool = False,
-                            log_directory: Optional[Path] = None) -> logging.Logger:
+def setup_application_logging(
+    debug_mode: bool = False, log_directory: Optional[Path] = None
+) -> logging.Logger:
     """
     Set up the main application logger with standard configuration.
 
@@ -225,11 +233,11 @@ def setup_application_logging(debug_mode: bool = False,
     level = logging.DEBUG if debug_mode else logging.INFO
 
     config = create_logger_config(
-        name='anafis',
+        name="anafis",
         level=level,
         console_output=True,
         file_output=True,
-        log_directory=log_directory
+        log_directory=log_directory,
     )
 
     logger = setup_logger(config)

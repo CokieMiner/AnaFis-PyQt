@@ -58,11 +58,7 @@ def sample_data():
     x = np.linspace(0, 10, 100)
     y = 2.5 * x + 1.0 + np.random.normal(0, 0.5, len(x))
 
-    return pd.DataFrame({
-        'x': x,
-        'y': y,
-        'error': np.full_like(x, 0.5)
-    })
+    return pd.DataFrame({"x": x, "y": y, "error": np.full_like(x, 0.5)})
 
 
 @pytest.fixture

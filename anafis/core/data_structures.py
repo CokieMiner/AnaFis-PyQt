@@ -1,21 +1,25 @@
 """
-Simplified core immutable data structures for ANAFIS application state management.
+Simplified core immutable data structures for ANAFIS application
+state management.
 
 This module defines the primary data structures used throughout the application
-using NamedTuples without custom __new__ methods to avoid Python compatibility issues.
+using NamedTuples without custom __new__ methods to avoid Python
+compatibility issues.
 """
 
 from typing import NamedTuple, Dict, Optional, Tuple, Any, FrozenSet
 from dataclasses import dataclass
 from enum import Enum
 import pandas as pd
-import numpy as np
+
+# import numpy as np  # Not currently used
 import networkx as nx
 from datetime import datetime
 
 
 class FittingMethod(Enum):
     """Enumeration of available fitting methods."""
+
     LEVENBERG_MARQUARDT = "lm"
     ODR = "odr"
     MCMC = "mcmc"
@@ -24,6 +28,7 @@ class FittingMethod(Enum):
 
 class SolverOperation(Enum):
     """Enumeration of solver operations."""
+
     SOLVE = "solve"
     INTEGRATE = "integrate"
     DIFFERENTIATE = "differentiate"
@@ -34,6 +39,7 @@ class SolverOperation(Enum):
 
 class DistributionType(Enum):
     """Enumeration of probability distributions for Monte Carlo."""
+
     NORMAL = "normal"
     UNIFORM = "uniform"
     LOGNORMAL = "lognormal"
@@ -45,6 +51,7 @@ class DistributionType(Enum):
 @dataclass(frozen=True)
 class Parameter:
     """Immutable parameter definition for fitting and Monte Carlo."""
+
     name: str
     value: float
     min_value: Optional[float] = None
@@ -56,17 +63,24 @@ class Parameter:
         """Validate parameter constraints."""
         if self.min_value is not None and self.max_value is not None:
             if self.min_value >= self.max_value:
-                raise ValueError(f"min_value ({self.min_value}) must be less than max_value ({self.max_value})")
+                raise ValueError(
+                    f"min_value ({self.min_value}) must be less than max_value ({self.max_value})"
+                )
 
         if self.min_value is not None and self.value < self.min_value:
-            raise ValueError(f"value ({self.value}) must be >= min_value ({self.min_value})")
+            raise ValueError(
+                f"value ({self.value}) must be >= min_value ({self.min_value})"
+            )
 
         if self.max_value is not None and self.value > self.max_value:
-            raise ValueError(f"value ({self.value}) must be <= max_value ({self.max_value})")
+            raise ValueError(
+                f"value ({self.value}) must be <= max_value ({self.max_value})"
+            )
 
 
 class SpreadsheetState(NamedTuple):
     """Immutable state container for spreadsheet data and formulas."""
+
     data: pd.DataFrame
     formulas: Dict[str, str]
     units: Dict[str, str]
@@ -77,6 +91,7 @@ class SpreadsheetState(NamedTuple):
 
 class FittingState(NamedTuple):
     """Immutable state container for curve fitting operations."""
+
     source_data: pd.DataFrame
     model_formula: str
     parameters: Dict[str, Parameter]
@@ -90,6 +105,7 @@ class FittingState(NamedTuple):
 
 class SolverState(NamedTuple):
     """Immutable state container for symbolic mathematics operations."""
+
     expression: str
     variables: Tuple[str, ...]
     target_variable: Optional[str]
@@ -104,6 +120,7 @@ class SolverState(NamedTuple):
 
 class ApplicationState(NamedTuple):
     """Immutable state container for the entire application."""
+
     spreadsheet_tabs: Dict[str, SpreadsheetState]
     fitting_tabs: Dict[str, FittingState]
     solver_tabs: Dict[str, SolverState]
@@ -118,13 +135,14 @@ class ApplicationState(NamedTuple):
 
 # Factory functions for creating states with defaults
 
+
 def create_spreadsheet_state(
     data: Optional[pd.DataFrame] = None,
     formulas: Optional[Dict[str, str]] = None,
     units: Optional[Dict[str, str]] = None,
     dependencies: Optional[nx.DiGraph] = None,
     metadata: Optional[Dict[str, Any]] = None,
-    last_modified: Optional[datetime] = None
+    last_modified: Optional[datetime] = None,
 ) -> SpreadsheetState:
     """Create a new SpreadsheetState with defaults."""
     return SpreadsheetState(
@@ -133,7 +151,7 @@ def create_spreadsheet_state(
         units=units if units is not None else {},
         dependencies=dependencies if dependencies is not None else nx.DiGraph(),
         metadata=metadata if metadata is not None else {},
-        last_modified=last_modified if last_modified is not None else datetime.now()
+        last_modified=last_modified if last_modified is not None else datetime.now(),
     )
 
 
@@ -146,7 +164,7 @@ def create_fitting_state(
     data_columns: Optional[Dict[str, str]] = None,
     weights_column: Optional[str] = None,
     metadata: Optional[Dict[str, Any]] = None,
-    last_modified: Optional[datetime] = None
+    last_modified: Optional[datetime] = None,
 ) -> FittingState:
     """Create a new FittingState with defaults."""
     return FittingState(
@@ -158,7 +176,7 @@ def create_fitting_state(
         data_columns=data_columns if data_columns is not None else {},
         weights_column=weights_column,
         metadata=metadata if metadata is not None else {},
-        last_modified=last_modified if last_modified is not None else datetime.now()
+        last_modified=last_modified if last_modified is not None else datetime.now(),
     )
 
 
@@ -172,7 +190,7 @@ def create_solver_state(
     latex_result: Optional[str] = None,
     assumptions: Optional[Dict[str, Any]] = None,
     metadata: Optional[Dict[str, Any]] = None,
-    last_modified: Optional[datetime] = None
+    last_modified: Optional[datetime] = None,
 ) -> SolverState:
     """Create a new SolverState with defaults."""
     return SolverState(
@@ -185,7 +203,7 @@ def create_solver_state(
         latex_result=latex_result,
         assumptions=assumptions if assumptions is not None else {},
         metadata=metadata if metadata is not None else {},
-        last_modified=last_modified if last_modified is not None else datetime.now()
+        last_modified=last_modified if last_modified is not None else datetime.now(),
     )
 
 
@@ -199,7 +217,7 @@ def create_application_state(
     user_preferences: Optional[Dict[str, Any]] = None,
     data_bus_state: Optional[Dict[str, Any]] = None,
     last_saved: Optional[datetime] = None,
-    last_modified: Optional[datetime] = None
+    last_modified: Optional[datetime] = None,
 ) -> ApplicationState:
     """Create a new ApplicationState with defaults."""
     return ApplicationState(
@@ -208,15 +226,18 @@ def create_application_state(
         solver_tabs=solver_tabs if solver_tabs is not None else {},
         active_tab_id=active_tab_id,
         tab_order=tab_order if tab_order is not None else (),
-        detached_windows=detached_windows if detached_windows is not None else frozenset(),
+        detached_windows=(
+            detached_windows if detached_windows is not None else frozenset()
+        ),
         user_preferences=user_preferences if user_preferences is not None else {},
         data_bus_state=data_bus_state if data_bus_state is not None else {},
         last_saved=last_saved,
-        last_modified=last_modified if last_modified is not None else datetime.now()
+        last_modified=last_modified if last_modified is not None else datetime.now(),
     )
 
 
 # Utility functions for working with immutable states
+
 
 def update_spreadsheet_state(state: SpreadsheetState, **kwargs) -> SpreadsheetState:
     """Create a new SpreadsheetState with updated fields."""

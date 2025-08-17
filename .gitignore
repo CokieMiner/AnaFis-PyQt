@@ -2,3 +2,5 @@
 .kiro
 /anafis.egg-info
 *.pyc
+/.logs
+.coverage

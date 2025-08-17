@@ -9,10 +9,12 @@ import sys
 import argparse
 from pathlib import Path
 from typing import Optional
+import json
 
 # Import core functionality
-from anafis.core.logging_config import setup_application_logging, get_module_logger
-from anafis.core.config import get_user_config, save_user_config, validate_config
+from anafis.core.logging_config import setup_application_logging
+from anafis.core.config import get_user_config, validate_config
+from anafis.gui.shell.notebook import Notebook
 
 
 def parse_arguments() -> argparse.Namespace:
@@ -23,7 +25,9 @@ def parse_arguments() -> argparse.Namespace:
         Parsed command line arguments
     """
     parser = argparse.ArgumentParser(
-        description="ANAFIS - Advanced Numerical Analysis and Fitting Interface System",
+        description=(
+            "ANAFIS - Advanced Numerical Analysis and Fitting " "Interface System"
+        ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
@@ -31,43 +35,27 @@ Examples:
   anafis --debug           # Start with debug logging
   anafis --config-dir /path # Use custom config directory
   anafis --reset-config    # Reset to default configuration
-        """
+        """,
+    )
+
+    parser.add_argument("--debug", action="store_true", help="Enable debug logging")
+
+    parser.add_argument(
+        "--config-dir", type=Path, help="Custom configuration directory"
+    )
+
+    parser.add_argument("--log-dir", type=Path, help="Custom log directory")
+
+    parser.add_argument(
+        "--reset-config", action="store_true", help="Reset configuration to defaults"
     )
 
     parser.add_argument(
-        "--debug",
-        action="store_true",
-        help="Enable debug logging"
+        "--no-gui", action="store_true", help="Run without GUI (for testing/debugging)"
     )
 
     parser.add_argument(
-        "--config-dir",
-        type=Path,
-        help="Custom configuration directory"
-    )
-
-    parser.add_argument(
-        "--log-dir",
-        type=Path,
-        help="Custom log directory"
-    )
-
-    parser.add_argument(
-        "--reset-config",
-        action="store_true",
-        help="Reset configuration to defaults"
-    )
-
-    parser.add_argument(
-        "--no-gui",
-        action="store_true",
-        help="Run without GUI (for testing/debugging)"
-    )
-
-    parser.add_argument(
-        "--version",
-        action="version",
-        version=f"ANAFIS {get_version()}"
+        "--version", action="version", version=f"ANAFIS {get_version()}"
     )
 
     return parser.parse_args()
@@ -82,6 +70,7 @@ def get_version() -> str:
     """
     try:
         from anafis import __version__
+
         return __version__
     except ImportError:
         return "0.1.0-dev"
@@ -99,8 +88,7 @@ def setup_application(args: argparse.Namespace) -> tuple[object, object]:
     """
     # Set up logging
     logger = setup_application_logging(
-        debug_mode=args.debug,
-        log_directory=args.log_dir
+        debug_mode=args.debug, log_directory=Path(".logs")
     )
 
     logger.info(f"Starting ANAFIS version {get_version()}")
@@ -111,6 +99,7 @@ def setup_application(args: argparse.Namespace) -> tuple[object, object]:
     if args.reset_config:
         logger.info("Resetting configuration to defaults")
         from anafis.core.config import reset_to_defaults
+
         config = reset_to_defaults()
     else:
         logger.info("Loading user configuration")
@@ -128,10 +117,7 @@ def setup_application(args: argparse.Namespace) -> tuple[object, object]:
     if not args.debug and config.advanced.debug_mode:
         logger.info("Debug mode enabled via configuration")
         # Re-setup logging with debug mode
-        logger = setup_application_logging(
-            debug_mode=True,
-            log_directory=args.log_dir
-        )
+        logger = setup_application_logging(debug_mode=True, log_directory=args.log_dir)
 
     logger.info("Application setup complete")
     return logger, config
@@ -151,7 +137,7 @@ def create_gui_application(logger: object, config: object) -> Optional[object]:
     try:
         # Import PyQt6 here to avoid import errors in no-gui mode
         from PyQt6.QtWidgets import QApplication
-        from PyQt6.QtCore import QTranslator, QLocale
+        from PyQt6.QtCore import QTranslator
         from PyQt6.QtGui import QIcon
 
         logger.info("Creating GUI application")
@@ -213,31 +199,60 @@ def run_application(app: Optional[object], logger: object, config: object) -> in
         logger.info("Application would start here (GUI not implemented yet)")
         return 0
 
+    main_window = None
+    session_file = Path(".logs") / "session.json"
+
     try:
         logger.info("Starting GUI application")
+        main_window = Notebook()
 
-        # Create main window (will be implemented in later tasks)
-        logger.info("Main window creation not yet implemented")
-        logger.info("This is the foundation task - GUI will be added in subsequent tasks")
+        # Load and restore session
+        if session_file.exists():
+            logger.info(f"Loading session state from {session_file}")
+            try:
+                with open(session_file, "r") as f:
+                    session_data = json.load(f)
 
-        # For now, just show that the application can start
-        logger.info("Application foundation is working correctly")
-        logger.info("Press Ctrl+C to exit")
+                # Clear existing tabs (except Home)
+                while main_window.tabs.count() > 1:
+                    main_window.tabs.removeTab(1)
 
-        # Simple event loop for testing
-        import time
-        try:
-            while True:
-                app.processEvents()
-                time.sleep(0.1)
-        except KeyboardInterrupt:
-            logger.info("Application interrupted by user")
+                for tab_state in session_data:
+                    if tab_state.get("type") != "home":
+                        tab_widget = main_window.create_tab_from_state(tab_state)
+                        if tab_widget:
+                            main_window.tabs.addTab(
+                                tab_widget,
+                                f"{tab_state.get('type').capitalize()} Restored",
+                            )
+                logger.info("Session state loaded successfully.")
+            except Exception as e:
+                logger.error(f"Failed to load session state: {e}")
 
-        return 0
+        main_window.show()
+        return app.exec()
 
     except Exception as e:
         logger.error(f"Application error: {e}")
         return 1
+    finally:
+        if main_window:
+            logger.info("Saving session state...")
+            session_data = []
+            for i in range(main_window.tabs.count()):
+                tab_widget = main_window.tabs.widget(i)
+                if (
+                    hasattr(tab_widget, "get_state")
+                    and tab_widget.get_state().get("type") != "home"
+                ):
+                    session_data.append(tab_widget.get_state())
+
+            try:
+                with open(session_file, "w") as f:
+                    json.dump(session_data, f, indent=4)
+                logger.info(f"Session state saved to {session_file}")
+            except Exception as e:
+                logger.error(f"Failed to save session state: {e}")
 
 
 def main() -> int:

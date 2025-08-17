@@ -8,13 +8,14 @@ using functional programming patterns and immutable data structures.
 import json
 import sys
 from pathlib import Path
-from typing import Dict, Any, Optional, Union, NamedTuple
+from typing import Dict, Any, Optional, NamedTuple
 from dataclasses import dataclass, asdict
 from enum import Enum
 
 
 class Theme(Enum):
     """Application theme options."""
+
     LIGHT = "light"
     DARK = "dark"
     SYSTEM = "system"
@@ -22,6 +23,7 @@ class Theme(Enum):
 
 class Language(Enum):
     """Supported languages."""
+
     ENGLISH = "en"
     SPANISH = "es"
     FRENCH = "fr"
@@ -32,6 +34,7 @@ class Language(Enum):
 
 class UpdateChannel(Enum):
     """Update channel options."""
+
     STABLE = "stable"
     BETA = "beta"
     DEVELOPMENT = "dev"
@@ -40,6 +43,7 @@ class UpdateChannel(Enum):
 @dataclass(frozen=True)
 class GeneralConfig:
     """General application configuration."""
+
     language: Language = Language.ENGLISH
     theme: Theme = Theme.SYSTEM
     startup_behavior: str = "restore_session"  # "restore_session", "home_only", "blank"
@@ -52,6 +56,7 @@ class GeneralConfig:
 @dataclass(frozen=True)
 class ComputationConfig:
     """Computation and algorithm configuration."""
+
     default_fitting_method: str = "lm"  # Levenberg-Marquardt
     numerical_precision: int = 15  # decimal places
     max_iterations: int = 1000
@@ -65,6 +70,7 @@ class ComputationConfig:
 @dataclass(frozen=True)
 class InterfaceConfig:
     """User interface configuration."""
+
     tab_detach_enabled: bool = True
     tab_close_confirmation: bool = True
     show_tooltips: bool = True
@@ -78,16 +84,21 @@ class InterfaceConfig:
     def __post_init__(self):
         """Set default shortcuts if not provided."""
         if self.floating_tool_shortcuts is None:
-            object.__setattr__(self, 'floating_tool_shortcuts', {
-                'uncertainty_calculator': 'F9',
-                'quick_solver': 'Alt+S',
-                'unit_converter': 'Ctrl+U'
-            })
+            object.__setattr__(
+                self,
+                "floating_tool_shortcuts",
+                {
+                    "uncertainty_calculator": "F9",
+                    "quick_solver": "Alt+S",
+                    "unit_converter": "Ctrl+U",
+                },
+            )
 
 
 @dataclass(frozen=True)
 class UpdateConfig:
     """Update system configuration."""
+
     auto_check_enabled: bool = True
     check_interval_hours: int = 24
     update_channel: UpdateChannel = UpdateChannel.STABLE
@@ -99,6 +110,7 @@ class UpdateConfig:
 @dataclass(frozen=True)
 class AdvancedConfig:
     """Advanced configuration options."""
+
     debug_mode: bool = False
     log_level: str = "INFO"
     memory_limit_mb: Optional[int] = None
@@ -115,6 +127,7 @@ class ApplicationConfig(NamedTuple):
     This structure contains all configuration sections and provides
     a single source of truth for application settings.
     """
+
     general: GeneralConfig
     computation: ComputationConfig
     interface: InterfaceConfig
@@ -123,10 +136,14 @@ class ApplicationConfig(NamedTuple):
     config_version: str
 
 
-
-
-def create_application_config(general=None, computation=None, interface=None,
-                            updates=None, advanced=None, config_version="1.0"):
+def create_application_config(
+    general=None,
+    computation=None,
+    interface=None,
+    updates=None,
+    advanced=None,
+    config_version="1.0",
+):
     """Create new ApplicationConfig with defaults."""
     if general is None:
         general = GeneralConfig()
@@ -139,8 +156,9 @@ def create_application_config(general=None, computation=None, interface=None,
     if advanced is None:
         advanced = AdvancedConfig()
 
-    return ApplicationConfig(general, computation, interface,
-                           updates, advanced, config_version)
+    return ApplicationConfig(
+        general, computation, interface, updates, advanced, config_version
+    )
 
 
 def get_default_config_directory() -> Path:
@@ -153,7 +171,8 @@ def get_default_config_directory() -> Path:
     if sys.platform == "win32":
         # Windows: Use AppData/Roaming
         import os
-        app_data = os.environ.get('APPDATA', os.path.expanduser('~'))
+
+        app_data = os.environ.get("APPDATA", os.path.expanduser("~"))
         return Path(app_data) / "ANAFIS"
     elif sys.platform == "darwin":
         # macOS: Use ~/Library/Application Support
@@ -199,6 +218,7 @@ def config_to_dict(config: ApplicationConfig) -> Dict[str, Any]:
     Returns:
         Dictionary representation of the configuration
     """
+
     def enum_serializer(obj):
         """Convert enums to their values."""
         if isinstance(obj, Enum):
@@ -209,7 +229,7 @@ def config_to_dict(config: ApplicationConfig) -> Dict[str, Any]:
 
     # Convert each section to dict
     for field_name in config._fields:
-        if field_name == 'config_version':
+        if field_name == "config_version":
             result[field_name] = config.config_version
         else:
             section = getattr(config, field_name)
@@ -240,19 +260,17 @@ def dict_to_config(config_dict: Dict[str, Any]) -> ApplicationConfig:
     Returns:
         ApplicationConfig instance
     """
-    def convert_enums(section_name: str, section_dict: Dict[str, Any]) -> Dict[str, Any]:
+
+    def convert_enums(
+        section_name: str, section_dict: Dict[str, Any]
+    ) -> Dict[str, Any]:
         """Convert string values back to enums where appropriate."""
         converted = section_dict.copy()
 
         # Define enum mappings for each section
         enum_mappings = {
-            'general': {
-                'language': Language,
-                'theme': Theme
-            },
-            'updates': {
-                'update_channel': UpdateChannel
-            }
+            "general": {"language": Language, "theme": Theme},
+            "updates": {"update_channel": UpdateChannel},
         }
 
         if section_name in enum_mappings:
@@ -267,11 +285,11 @@ def dict_to_config(config_dict: Dict[str, Any]) -> ApplicationConfig:
         return converted
 
     # Extract sections with enum conversion
-    general_dict = convert_enums('general', config_dict.get('general', {}))
-    computation_dict = config_dict.get('computation', {})
-    interface_dict = config_dict.get('interface', {})
-    updates_dict = convert_enums('updates', config_dict.get('updates', {}))
-    advanced_dict = config_dict.get('advanced', {})
+    general_dict = convert_enums("general", config_dict.get("general", {}))
+    computation_dict = config_dict.get("computation", {})
+    interface_dict = config_dict.get("interface", {})
+    updates_dict = convert_enums("updates", config_dict.get("updates", {}))
+    advanced_dict = config_dict.get("advanced", {})
 
     # Create section instances
     general = GeneralConfig(**general_dict)
@@ -280,14 +298,14 @@ def dict_to_config(config_dict: Dict[str, Any]) -> ApplicationConfig:
     updates = UpdateConfig(**updates_dict)
     advanced = AdvancedConfig(**advanced_dict)
 
-    config_version = config_dict.get('config_version', '1.0')
+    config_version = config_dict.get("config_version", "1.0")
 
-    return create_application_config(general, computation, interface, updates,
-                                   advanced, config_version)
+    return create_application_config(
+        general, computation, interface, updates, advanced, config_version
+    )
 
 
-def save_config(config: ApplicationConfig,
-                config_file: Optional[Path] = None) -> bool:
+def save_config(config: ApplicationConfig, config_file: Optional[Path] = None) -> bool:
     """
     Save configuration to file.
 
@@ -308,7 +326,7 @@ def save_config(config: ApplicationConfig,
         # Convert to dictionary and save
         config_dict = config_to_dict(config)
 
-        with open(config_file, 'w', encoding='utf-8') as f:
+        with open(config_file, "w", encoding="utf-8") as f:
             json.dump(config_dict, f, indent=2, ensure_ascii=False)
 
         return True
@@ -337,7 +355,7 @@ def load_config(config_file: Optional[Path] = None) -> ApplicationConfig:
         return create_default_config()
 
     try:
-        with open(config_file, 'r', encoding='utf-8') as f:
+        with open(config_file, "r", encoding="utf-8") as f:
             config_dict = json.load(f)
 
         return dict_to_config(config_dict)
@@ -348,9 +366,9 @@ def load_config(config_file: Optional[Path] = None) -> ApplicationConfig:
         return create_default_config()
 
 
-def update_config(current_config: ApplicationConfig,
-                 section: str,
-                 updates: Dict[str, Any]) -> ApplicationConfig:
+def update_config(
+    current_config: ApplicationConfig, section: str, updates: Dict[str, Any]
+) -> ApplicationConfig:
     """
     Create a new configuration with updated values in a specific section.
 
@@ -371,11 +389,11 @@ def update_config(current_config: ApplicationConfig,
 
     # Create new section instance
     section_classes = {
-        'general': GeneralConfig,
-        'computation': ComputationConfig,
-        'interface': InterfaceConfig,
-        'updates': UpdateConfig,
-        'advanced': AdvancedConfig
+        "general": GeneralConfig,
+        "computation": ComputationConfig,
+        "interface": InterfaceConfig,
+        "updates": UpdateConfig,
+        "advanced": AdvancedConfig,
     }
 
     new_section = section_classes[section](**section_dict)
@@ -407,7 +425,10 @@ def validate_config(config: ApplicationConfig) -> tuple[bool, list[str]]:
         errors.append("Recent files limit must be at least 1")
 
     # Validate computation config
-    if config.computation.numerical_precision < 1 or config.computation.numerical_precision > 50:
+    if (
+        config.computation.numerical_precision < 1
+        or config.computation.numerical_precision > 50
+    ):
         errors.append("Numerical precision must be between 1 and 50")
 
     if config.computation.max_iterations < 1:
@@ -432,6 +453,7 @@ def validate_config(config: ApplicationConfig) -> tuple[bool, list[str]]:
 
 
 # Convenience functions for common operations
+
 
 def get_user_config() -> ApplicationConfig:
     """Load user configuration from the default location."""

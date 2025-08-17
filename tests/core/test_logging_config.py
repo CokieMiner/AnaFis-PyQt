@@ -2,15 +2,20 @@
 Tests for logging configuration functionality.
 """
 
-import pytest
 import logging
 import tempfile
 from pathlib import Path
 
 from anafis.core.logging_config import (
-    create_log_formatter, create_console_handler, create_file_handler,
-    get_default_log_directory, create_logger_config, setup_logger,
-    setup_application_logging, get_module_logger, quick_setup
+    create_log_formatter,
+    create_console_handler,
+    create_file_handler,
+    get_default_log_directory,
+    create_logger_config,
+    setup_logger,
+    setup_application_logging,
+    get_module_logger,
+    quick_setup,
 )
 
 
@@ -85,10 +90,7 @@ class TestFileHandler:
         with tempfile.TemporaryDirectory() as temp_dir:
             log_file = Path(temp_dir) / "test.log"
             handler = create_file_handler(
-                log_file,
-                level=logging.WARNING,
-                max_bytes=1024,
-                backup_count=3
+                log_file, level=logging.WARNING, max_bytes=1024, backup_count=3
             )
 
             assert handler.level == logging.WARNING
@@ -103,21 +105,19 @@ class TestLoggerConfig:
         """Test logger configuration creation."""
         config = create_logger_config("test_logger")
 
-        assert config['name'] == "test_logger"
-        assert config['level'] == logging.INFO
-        assert len(config['handlers']) == 2  # Console and file by default
-        assert isinstance(config['log_directory'], Path)
+        assert config["name"] == "test_logger"
+        assert config["level"] == logging.INFO
+        assert len(config["handlers"]) == 2  # Console and file by default
+        assert isinstance(config["log_directory"], Path)
 
     def test_logger_config_console_only(self):
         """Test logger config with console output only."""
         config = create_logger_config(
-            "test_logger",
-            console_output=True,
-            file_output=False
+            "test_logger", console_output=True, file_output=False
         )
 
-        assert len(config['handlers']) == 1
-        assert config['handlers'][0]['type'] == 'console'
+        assert len(config["handlers"]) == 1
+        assert config["handlers"][0]["type"] == "console"
 
     def test_logger_config_file_only(self):
         """Test logger config with file output only."""
@@ -126,11 +126,11 @@ class TestLoggerConfig:
                 "test_logger",
                 console_output=False,
                 file_output=True,
-                log_directory=Path(temp_dir)
+                log_directory=Path(temp_dir),
             )
 
-            assert len(config['handlers']) == 1
-            assert config['handlers'][0]['type'] == 'file'
+            assert len(config["handlers"]) == 1
+            assert config["handlers"][0]["type"] == "file"
 
 
 class TestLoggerSetup:
@@ -140,8 +140,7 @@ class TestLoggerSetup:
         """Test logger setup from configuration."""
         with tempfile.TemporaryDirectory() as temp_dir:
             config = create_logger_config(
-                "test_setup_logger",
-                log_directory=Path(temp_dir)
+                "test_setup_logger", log_directory=Path(temp_dir)
             )
 
             logger = setup_logger(config)
@@ -154,8 +153,7 @@ class TestLoggerSetup:
         """Test application logging setup."""
         with tempfile.TemporaryDirectory() as temp_dir:
             logger = setup_application_logging(
-                debug_mode=True,
-                log_directory=Path(temp_dir)
+                debug_mode=True, log_directory=Path(temp_dir)
             )
 
             assert logger.name == "anafis"
@@ -196,7 +194,7 @@ class TestLoggerIntegration:
                 "integration_test",
                 console_output=False,
                 file_output=True,
-                log_directory=Path(temp_dir)
+                log_directory=Path(temp_dir),
             )
 
             logger = setup_logger(config)
@@ -224,7 +222,7 @@ class TestLoggerIntegration:
                 level=logging.WARNING,
                 console_output=False,
                 file_output=True,
-                log_directory=Path(temp_dir)
+                log_directory=Path(temp_dir),
             )
 
             logger = setup_logger(config)

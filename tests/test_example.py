@@ -31,9 +31,9 @@ def test_qt_widget_creation(qtbot):
 
 def test_sample_data_fixture(sample_data):
     """Test the sample data fixture."""
-    assert 'x' in sample_data.columns
-    assert 'y' in sample_data.columns
-    assert 'error' in sample_data.columns
+    assert "x" in sample_data.columns
+    assert "y" in sample_data.columns
+    assert "error" in sample_data.columns
     assert len(sample_data) == 100
 
 
@@ -41,5 +41,6 @@ def test_sample_data_fixture(sample_data):
 def test_slow_operation():
     """Example of a slow test that can be skipped."""
     import time
+
     time.sleep(0.1)  # Simulate slow operation
     assert True

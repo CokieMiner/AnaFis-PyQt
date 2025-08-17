@@ -3,16 +3,30 @@ Tests for configuration management functionality.
 """
 
 import pytest
-import json
 import tempfile
 from pathlib import Path
 
 from anafis.core.config import (
-    GeneralConfig, ComputationConfig, InterfaceConfig, UpdateConfig,
-    AdvancedConfig, ApplicationConfig, Theme, Language, UpdateChannel,
-    get_default_config_directory, get_config_file_path, create_default_config,
-    config_to_dict, dict_to_config, save_config, load_config, update_config,
-    validate_config, get_user_config, save_user_config, reset_to_defaults
+    GeneralConfig,
+    ComputationConfig,
+    InterfaceConfig,
+    UpdateConfig,
+    AdvancedConfig,
+    ApplicationConfig,
+    Theme,
+    Language,
+    UpdateChannel,
+    get_default_config_directory,
+    get_config_file_path,
+    create_default_config,
+    create_application_config,
+    config_to_dict,
+    dict_to_config,
+    save_config,
+    load_config,
+    update_config,
+    validate_config,
+    reset_to_defaults,
 )
 
 
@@ -72,7 +86,7 @@ class TestApplicationConfig:
 
     def test_default_creation(self):
         """Test ApplicationConfig creation with defaults."""
-        config = ApplicationConfig()
+        config = create_application_config()
         assert isinstance(config.general, GeneralConfig)
         assert isinstance(config.computation, ComputationConfig)
         assert isinstance(config.interface, InterfaceConfig)
@@ -85,10 +99,7 @@ class TestApplicationConfig:
         general = GeneralConfig(language=Language.SPANISH, theme=Theme.DARK)
         computation = ComputationConfig(numerical_precision=10)
 
-        config = ApplicationConfig(
-            general=general,
-            computation=computation
-        )
+        config = create_application_config(general=general, computation=computation)
 
         assert config.general.language == Language.SPANISH
         assert config.general.theme == Theme.DARK
@@ -96,7 +107,7 @@ class TestApplicationConfig:
 
     def test_immutability(self):
         """Test that ApplicationConfig is immutable."""
-        config = ApplicationConfig()
+        config = create_application_config()
 
         # Should not be able to modify the config directly
         with pytest.raises(AttributeError):
@@ -160,10 +171,10 @@ class TestConfigSerialization:
 
     def test_roundtrip_serialization(self):
         """Test that serialization roundtrip preserves data."""
-        original_config = ApplicationConfig(
+        original_config = create_application_config(
             general=GeneralConfig(language=Language.FRENCH, theme=Theme.DARK),
             computation=ComputationConfig(numerical_precision=12),
-            updates=UpdateConfig(update_channel=UpdateChannel.BETA)
+            updates=UpdateConfig(update_channel=UpdateChannel.BETA),
         )
 
         # Convert to dict and back
@@ -185,9 +196,9 @@ class TestConfigFileOperations:
             config_file = Path(temp_dir) / "test_config.json"
 
             # Create and save config
-            original_config = ApplicationConfig(
+            original_config = create_application_config(
                 general=GeneralConfig(language=Language.GERMAN),
-                computation=ComputationConfig(max_iterations=500)
+                computation=ComputationConfig(max_iterations=500),
             )
 
             success = save_config(original_config, config_file)
@@ -245,7 +256,7 @@ class TestConfigUpdate:
         updated_config = update_config(
             original_config,
             "general",
-            {"language": Language.SPANISH, "theme": Theme.DARK}
+            {"language": Language.SPANISH, "theme": Theme.DARK},
         )
 
         # Check that updates were applied
@@ -253,7 +264,10 @@ class TestConfigUpdate:
         assert updated_config.general.theme == Theme.DARK
 
         # Check that other sections are unchanged
-        assert updated_config.computation.numerical_precision == original_config.computation.numerical_precision
+        assert (
+            updated_config.computation.numerical_precision
+            == original_config.computation.numerical_precision
+        )
 
         # Check that original config is unchanged
         assert original_config.general.language == Language.ENGLISH
@@ -265,7 +279,7 @@ class TestConfigUpdate:
         updated_config = update_config(
             original_config,
             "computation",
-            {"numerical_precision": 20, "max_iterations": 2000}
+            {"numerical_precision": 20, "max_iterations": 2000},
         )
 
         assert updated_config.computation.numerical_precision == 20
@@ -286,7 +300,7 @@ class TestConfigValidation:
 
     def test_invalid_auto_save_interval(self):
         """Test validation with invalid auto-save interval."""
-        config = ApplicationConfig(
+        config = create_application_config(
             general=GeneralConfig(auto_save_interval=10)  # Too low
         )
 
@@ -296,7 +310,7 @@ class TestConfigValidation:
 
     def test_invalid_numerical_precision(self):
         """Test validation with invalid numerical precision."""
-        config = ApplicationConfig(
+        config = create_application_config(
             computation=ComputationConfig(numerical_precision=100)  # Too high
         )
 
@@ -306,9 +320,9 @@ class TestConfigValidation:
 
     def test_multiple_validation_errors(self):
         """Test validation with multiple errors."""
-        config = ApplicationConfig(
+        config = create_application_config(
             general=GeneralConfig(auto_save_interval=10, recent_files_limit=0),
-            computation=ComputationConfig(max_iterations=0)
+            computation=ComputationConfig(max_iterations=0),
         )
 
         is_valid, errors = validate_config(config)

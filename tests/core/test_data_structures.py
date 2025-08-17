@@ -4,15 +4,26 @@ Tests for core immutable data structures.
 
 import pytest
 import pandas as pd
-import numpy as np
 import networkx as nx
 from datetime import datetime
 
 from anafis.core.data_structures import (
-    SpreadsheetState, FittingState, SolverState, ApplicationState,
-    Parameter, FittingMethod, SolverOperation, DistributionType,
-    create_spreadsheet_state, create_fitting_state, create_solver_state, create_application_state,
-    update_spreadsheet_state, update_fitting_state, update_solver_state, update_application_state
+    SpreadsheetState,
+    FittingState,
+    SolverState,
+    ApplicationState,
+    Parameter,
+    FittingMethod,
+    SolverOperation,
+    DistributionType,
+    create_spreadsheet_state,
+    create_fitting_state,
+    create_solver_state,
+    create_application_state,
+    update_spreadsheet_state,
+    update_fitting_state,
+    update_solver_state,
+    update_application_state,
 )
 
 
@@ -65,11 +76,7 @@ class TestSpreadsheetState:
         formulas = {"C1": "=A1+B1"}
         units = {"A": "m", "B": "s"}
 
-        state = create_spreadsheet_state(
-            data=data,
-            formulas=formulas,
-            units=units
-        )
+        state = create_spreadsheet_state(data=data, formulas=formulas, units=units)
 
         assert len(state.data) == 3
         assert "A" in state.data.columns
@@ -89,10 +96,7 @@ class TestSpreadsheetState:
         original_state = create_spreadsheet_state()
         new_formulas = {"A1": "=1+1"}
 
-        updated_state = update_spreadsheet_state(
-            original_state,
-            formulas=new_formulas
-        )
+        updated_state = update_spreadsheet_state(original_state, formulas=new_formulas)
 
         assert updated_state.formulas == new_formulas
         assert updated_state.last_modified > original_state.last_modified
@@ -119,7 +123,7 @@ class TestFittingState:
             source_data=data,
             model_formula="a*x + b",
             parameters=parameters,
-            method=FittingMethod.ODR
+            method=FittingMethod.ODR,
         )
 
         assert len(state.source_data) == 3
@@ -144,7 +148,7 @@ class TestSolverState:
         state = create_solver_state(
             expression="x^2 + 2*x + 1 = 0",
             variables=("x",),
-            operation=SolverOperation.SOLVE
+            operation=SolverOperation.SOLVE,
         )
 
         assert state.expression == "x^2 + 2*x + 1 = 0"
@@ -174,7 +178,7 @@ class TestApplicationState:
             spreadsheet_tabs={"sheet1": spreadsheet_tab},
             fitting_tabs={"fit1": fitting_tab},
             active_tab_id="sheet1",
-            tab_order=("sheet1", "fit1")
+            tab_order=("sheet1", "fit1"),
         )
 
         assert "sheet1" in state.spreadsheet_tabs
