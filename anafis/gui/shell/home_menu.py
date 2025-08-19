@@ -1,10 +1,13 @@
+from typing import Optional, TYPE_CHECKING
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QPushButton, QLabel
 from PyQt6.QtCore import Qt
-from typing import Optional
+
+if TYPE_CHECKING:
+    from anafis.gui.shell.notebook import Notebook
 
 
 class HomeMenuWidget(QWidget):
-    def __init__(self, parent: Optional[QWidget] = None) -> None:
+    def __init__(self, parent: Optional["Notebook"] = None) -> None:
         super().__init__(parent)
         self.parent_notebook = parent
         self.init_ui()
@@ -19,23 +22,35 @@ class HomeMenuWidget(QWidget):
         layout.addWidget(quick_new_label)
 
         btn_spreadsheet = QPushButton("New Spreadsheet")
-        btn_spreadsheet.clicked.connect(
-            lambda: self.parent_notebook.new_tab("spreadsheet")
-        )
+        btn_spreadsheet.clicked.connect(self._on_new_spreadsheet_clicked)
         layout.addWidget(btn_spreadsheet)
 
         btn_fitting = QPushButton("New Fitting")
-        btn_fitting.clicked.connect(lambda: self.parent_notebook.new_tab("fitting"))
+        btn_fitting.clicked.connect(self._on_new_fitting_clicked)
         layout.addWidget(btn_fitting)
 
         btn_solver = QPushButton("New Solver")
-        btn_solver.clicked.connect(lambda: self.parent_notebook.new_tab("solver"))
+        btn_solver.clicked.connect(self._on_new_solver_clicked)
         layout.addWidget(btn_solver)
 
         btn_montecarlo = QPushButton("New Monte-Carlo")
-        btn_montecarlo.clicked.connect(
-            lambda: self.parent_notebook.new_tab("montecarlo")
-        )
+        btn_montecarlo.clicked.connect(self._on_new_montecarlo_clicked)
         layout.addWidget(btn_montecarlo)
 
         self.setLayout(layout)
+
+    def _on_new_spreadsheet_clicked(self) -> None:
+        if self.parent_notebook:
+            self.parent_notebook.new_tab("spreadsheet")
+
+    def _on_new_fitting_clicked(self) -> None:
+        if self.parent_notebook:
+            self.parent_notebook.new_tab("fitting")
+
+    def _on_new_solver_clicked(self) -> None:
+        if self.parent_notebook:
+            self.parent_notebook.new_tab("solver")
+
+    def _on_new_montecarlo_clicked(self) -> None:
+        if self.parent_notebook:
+            self.parent_notebook.new_tab("montecarlo")

@@ -9,14 +9,12 @@ import logging
 import logging.handlers
 import sys
 from pathlib import Path
-from typing import Dict, Any, Optional
+from typing import Optional
 
-# from datetime import datetime  # Not currently used
+from anafis.core.data_structures import LoggerConfig
 
 
-def create_log_formatter(
-    include_timestamp: bool = True, include_module: bool = True
-) -> logging.Formatter:
+def create_log_formatter(include_timestamp: bool = True, include_module: bool = True) -> logging.Formatter:
     """
     Create a log formatter with configurable components.
 
@@ -129,7 +127,7 @@ def create_logger_config(
     console_output: bool = True,
     file_output: bool = True,
     log_directory: Optional[Path] = None,
-) -> Dict[str, Any]:
+) -> LoggerConfig:
     """
     Create a logger configuration dictionary.
 
@@ -146,7 +144,7 @@ def create_logger_config(
     if log_directory is None:
         log_directory = get_default_log_directory()
 
-    config = {
+    config: LoggerConfig = {
         "name": name,
         "level": level,
         "handlers": [],
@@ -154,31 +152,33 @@ def create_logger_config(
     }
 
     if console_output:
-        config["handlers"].append(
-            {
-                "type": "console",
-                "level": logging.INFO,
-                "formatter": create_log_formatter(include_timestamp=False),
-            }
-        )
+        handlers = config["handlers"]
+        if isinstance(handlers, list):
+            handlers.append(
+                {
+                    "type": "console",
+                    "level": logging.INFO,
+                    "formatter": create_log_formatter(include_timestamp=False),
+                }
+            )
 
     if file_output:
         log_file = log_directory / f"{name}.log"
-        config["handlers"].append(
-            {
-                "type": "file",
-                "path": log_file,
-                "level": logging.DEBUG,
-                "formatter": create_log_formatter(
-                    include_timestamp=True, include_module=True
-                ),
-            }
-        )
+        handlers = config["handlers"]
+        if isinstance(handlers, list):
+            handlers.append(
+                {
+                    "type": "file",
+                    "path": log_file,
+                    "level": logging.DEBUG,
+                    "formatter": create_log_formatter(include_timestamp=True, include_module=True),
+                }
+            )
 
     return config
 
 
-def setup_logger(config: Dict[str, Any]) -> logging.Logger:
+def setup_logger(config: LoggerConfig) -> logging.Logger:
     """
     Set up a logger based on configuration dictionary.
 
@@ -197,9 +197,7 @@ def setup_logger(config: Dict[str, Any]) -> logging.Logger:
     # Add configured handlers
     for handler_config in config["handlers"]:
         if handler_config["type"] == "console":
-            handler = create_console_handler(
-                level=handler_config["level"], formatter=handler_config["formatter"]
-            )
+            handler = create_console_handler(level=handler_config["level"], formatter=handler_config["formatter"])
         elif handler_config["type"] == "file":
             handler = create_file_handler(
                 log_file_path=handler_config["path"],
@@ -217,9 +215,7 @@ def setup_logger(config: Dict[str, Any]) -> logging.Logger:
     return logger
 
 
-def setup_application_logging(
-    debug_mode: bool = False, log_directory: Optional[Path] = None
-) -> logging.Logger:
+def setup_application_logging(debug_mode: bool = False, log_directory: Optional[Path] = None) -> logging.Logger:
     """
     Set up the main application logger with standard configuration.
 

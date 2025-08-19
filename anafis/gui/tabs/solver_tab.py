@@ -1,5 +1,8 @@
+from typing import Optional
+
 from PyQt6.QtWidgets import QWidget, QLabel, QVBoxLayout
-from typing import Optional, Dict, Any
+
+from anafis.core.data_structures import TabState
 
 
 class SolverTab(QWidget):
@@ -9,5 +12,5 @@ class SolverTab(QWidget):
         layout.addWidget(QLabel("Solver Tab Content"))
         self.setLayout(layout)
 
-    def get_state(self) -> Dict[str, Any]:
+    def get_state(self) -> TabState:
         return {"type": "solver"}

@@ -8,157 +8,33 @@ using functional programming patterns and immutable data structures.
 import json
 import sys
 from pathlib import Path
-from typing import Dict, Any, Optional, NamedTuple
-from dataclasses import dataclass, asdict
+from typing import Dict, Optional, cast, Literal
+from dataclasses import asdict
 from enum import Enum
-
-
-class Theme(Enum):
-    """Application theme options."""
-
-    LIGHT = "light"
-    DARK = "dark"
-    SYSTEM = "system"
-
-
-class Language(Enum):
-    """Supported languages."""
-
-    ENGLISH = "en"
-    SPANISH = "es"
-    FRENCH = "fr"
-    GERMAN = "de"
-    CHINESE = "zh"
-    JAPANESE = "ja"
-
-
-class UpdateChannel(Enum):
-    """Update channel options."""
-
-    STABLE = "stable"
-    BETA = "beta"
-    DEVELOPMENT = "dev"
-
-
-@dataclass(frozen=True)
-class GeneralConfig:
-    """General application configuration."""
-
-    language: Language = Language.ENGLISH
-    theme: Theme = Theme.SYSTEM
-    startup_behavior: str = "restore_session"  # "restore_session", "home_only", "blank"
-    auto_save_interval: int = 300  # seconds
-    recent_files_limit: int = 10
-    show_splash_screen: bool = True
-    check_updates_on_startup: bool = True
-
-
-@dataclass(frozen=True)
-class ComputationConfig:
-    """Computation and algorithm configuration."""
-
-    default_fitting_method: str = "lm"  # Levenberg-Marquardt
-    numerical_precision: int = 15  # decimal places
-    max_iterations: int = 1000
-    convergence_tolerance: float = 1e-8
-    use_gpu_acceleration: bool = True
-    gpu_device_id: Optional[int] = None
-    parallel_processing: bool = True
-    max_workers: Optional[int] = None  # None = auto-detect
-
-
-@dataclass(frozen=True)
-class InterfaceConfig:
-    """User interface configuration."""
-
-    tab_detach_enabled: bool = True
-    tab_close_confirmation: bool = True
-    show_tooltips: bool = True
-    animation_enabled: bool = True
-    status_bar_visible: bool = True
-    toolbar_visible: bool = True
-    floating_tool_shortcuts: Dict[str, str] = None
-    plot_default_style: str = "seaborn-v0_8"
-    plot_dpi: int = 100
-
-    def __post_init__(self):
-        """Set default shortcuts if not provided."""
-        if self.floating_tool_shortcuts is None:
-            object.__setattr__(
-                self,
-                "floating_tool_shortcuts",
-                {
-                    "uncertainty_calculator": "F9",
-                    "quick_solver": "Alt+S",
-                    "unit_converter": "Ctrl+U",
-                },
-            )
-
-
-@dataclass(frozen=True)
-class UpdateConfig:
-    """Update system configuration."""
-
-    auto_check_enabled: bool = True
-    check_interval_hours: int = 24
-    update_channel: UpdateChannel = UpdateChannel.STABLE
-    auto_download: bool = False
-    notify_beta_releases: bool = False
-    github_api_token: Optional[str] = None  # For higher rate limits
-
-
-@dataclass(frozen=True)
-class AdvancedConfig:
-    """Advanced configuration options."""
-
-    debug_mode: bool = False
-    log_level: str = "INFO"
-    memory_limit_mb: Optional[int] = None
-    cache_size_mb: int = 100
-    enable_profiling: bool = False
-    experimental_features: bool = False
-    custom_plugin_paths: tuple = ()
-
-
-class ApplicationConfig(NamedTuple):
-    """
-    Immutable application configuration container.
-
-    This structure contains all configuration sections and provides
-    a single source of truth for application settings.
-    """
-
-    general: GeneralConfig
-    computation: ComputationConfig
-    interface: InterfaceConfig
-    updates: UpdateConfig
-    advanced: AdvancedConfig
-    config_version: str
+from anafis.core.data_structures import (
+    Theme,
+    ApplicationConfig,
+    ComputationConfig,
+    GeneralConfig,
+    InterfaceConfig,
+    UpdateConfig,
+    AdvancedConfig,
+    Language,
+    UpdateChannel,
+    ConfigDict,
+)
 
 
 def create_application_config(
-    general=None,
-    computation=None,
-    interface=None,
-    updates=None,
-    advanced=None,
-    config_version="1.0",
-):
+    general: GeneralConfig = GeneralConfig(),
+    computation: ComputationConfig = ComputationConfig(),
+    interface: InterfaceConfig = InterfaceConfig(),
+    updates: UpdateConfig = UpdateConfig(),
+    advanced: AdvancedConfig = AdvancedConfig(),
+    config_version: str = "1.0",
+) -> ApplicationConfig:
     """Create new ApplicationConfig with defaults."""
-    if general is None:
-        general = GeneralConfig()
-    if computation is None:
-        computation = ComputationConfig()
-    if interface is None:
-        interface = InterfaceConfig()
-    if updates is None:
-        updates = UpdateConfig()
-    if advanced is None:
-        advanced = AdvancedConfig()
-
-    return ApplicationConfig(
-        general, computation, interface, updates, advanced, config_version
-    )
+    return ApplicationConfig(general, computation, interface, updates, advanced, config_version)
 
 
 def get_default_config_directory() -> Path:
@@ -208,7 +84,7 @@ def create_default_config() -> ApplicationConfig:
     return create_application_config()
 
 
-def config_to_dict(config: ApplicationConfig) -> Dict[str, Any]:
+def config_to_dict(config: ApplicationConfig) -> ConfigDict:
     """
     Convert ApplicationConfig to a dictionary for serialization.
 
@@ -218,39 +94,38 @@ def config_to_dict(config: ApplicationConfig) -> Dict[str, Any]:
     Returns:
         Dictionary representation of the configuration
     """
+    config_dict: ConfigDict = {
+        "general": {},
+        "computation": {},
+        "interface": {},
+        "updates": {},
+        "advanced": {},
+        "config_version": config.config_version,
+    }
 
-    def enum_serializer(obj):
-        """Convert enums to their values."""
-        if isinstance(obj, Enum):
-            return obj.value
-        return obj
+    # Process each section to convert Enums to their values
+    for section_name in ConfigDict.__annotations__.keys():
+        if section_name == "config_version":
+            continue
+        section_data = getattr(config, section_name)
+        section_dict = asdict(section_data)  # Convert dataclass to dict
 
-    result = {}
+        for key, value in section_dict.items():
+            if isinstance(value, Enum):
+                section_dict[key] = value.value
+            elif isinstance(value, dict):
+                # Handle nested dictionaries (like floating_tool_shortcuts)
+                for nested_key, nested_value in value.items():
+                    if isinstance(nested_value, Enum):
+                        value[nested_key] = nested_value.value
+        config_dict[cast(Literal["general", "computation", "interface", "updates", "advanced"], section_name)] = (
+            section_dict
+        )
 
-    # Convert each section to dict
-    for field_name in config._fields:
-        if field_name == "config_version":
-            result[field_name] = config.config_version
-        else:
-            section = getattr(config, field_name)
-            section_dict = asdict(section)
-
-            # Convert enums to values
-            for key, value in section_dict.items():
-                if isinstance(value, Enum):
-                    section_dict[key] = value.value
-                elif isinstance(value, dict):
-                    # Handle nested dictionaries
-                    for nested_key, nested_value in value.items():
-                        if isinstance(nested_value, Enum):
-                            value[nested_key] = nested_value.value
-
-            result[field_name] = section_dict
-
-    return result
+    return config_dict
 
 
-def dict_to_config(config_dict: Dict[str, Any]) -> ApplicationConfig:
+def dict_to_config(config_dict: ConfigDict) -> ApplicationConfig:
     """
     Convert a dictionary to ApplicationConfig.
 
@@ -261,9 +136,7 @@ def dict_to_config(config_dict: Dict[str, Any]) -> ApplicationConfig:
         ApplicationConfig instance
     """
 
-    def convert_enums(
-        section_name: str, section_dict: Dict[str, Any]
-    ) -> Dict[str, Any]:
+    def convert_enums(section_name: str, section_dict: Dict[str, object]) -> Dict[str, object]:
         """Convert string values back to enums where appropriate."""
         converted = section_dict.copy()
 
@@ -274,7 +147,7 @@ def dict_to_config(config_dict: Dict[str, Any]) -> ApplicationConfig:
         }
 
         if section_name in enum_mappings:
-            for field, enum_class in enum_mappings[section_name].items():
+            for field, enum_class in cast(Dict[str, type[Enum]], enum_mappings[section_name]).items():
                 if field in converted:
                     try:
                         converted[field] = enum_class(converted[field])
@@ -292,17 +165,15 @@ def dict_to_config(config_dict: Dict[str, Any]) -> ApplicationConfig:
     advanced_dict = config_dict.get("advanced", {})
 
     # Create section instances
-    general = GeneralConfig(**general_dict)
-    computation = ComputationConfig(**computation_dict)
-    interface = InterfaceConfig(**interface_dict)
-    updates = UpdateConfig(**updates_dict)
-    advanced = AdvancedConfig(**advanced_dict)
+    general = GeneralConfig(**general_dict)  # type: ignore
+    computation = ComputationConfig(**computation_dict)  # type: ignore
+    interface = InterfaceConfig(**interface_dict)  # type: ignore
+    updates = UpdateConfig(**updates_dict)  # type: ignore
+    advanced = AdvancedConfig(**advanced_dict)  # type: ignore
 
     config_version = config_dict.get("config_version", "1.0")
 
-    return create_application_config(
-        general, computation, interface, updates, advanced, config_version
-    )
+    return create_application_config(general, computation, interface, updates, advanced, config_version)
 
 
 def save_config(config: ApplicationConfig, config_file: Optional[Path] = None) -> bool:
@@ -367,7 +238,7 @@ def load_config(config_file: Optional[Path] = None) -> ApplicationConfig:
 
 
 def update_config(
-    current_config: ApplicationConfig, section: str, updates: Dict[str, Any]
+    current_config: ApplicationConfig, section: str, updates_dict: Dict[str, object]
 ) -> ApplicationConfig:
     """
     Create a new configuration with updated values in a specific section.
@@ -385,7 +256,7 @@ def update_config(
 
     # Convert to dict, apply updates, and create new section
     section_dict = asdict(current_section)
-    section_dict.update(updates)
+    section_dict.update(updates_dict)
 
     # Create new section instance
     section_classes = {
@@ -399,10 +270,33 @@ def update_config(
     new_section = section_classes[section](**section_dict)
 
     # Create new config with updated section
-    config_dict = current_config._asdict()
-    config_dict[section] = new_section
+    general = current_config.general
+    computation = current_config.computation
+    interface = current_config.interface
+    updates = current_config.updates
+    advanced = current_config.advanced
+    config_version = current_config.config_version
 
-    return create_application_config(**config_dict)
+    # Apply the updated section
+    if section == "general":
+        general = new_section
+    elif section == "computation":
+        computation = new_section
+    elif section == "interface":
+        interface = new_section
+    elif section == "updates":
+        updates = new_section
+    elif section == "advanced":
+        advanced = new_section
+
+    return create_application_config(
+        general=general,
+        computation=computation,
+        interface=interface,
+        updates=updates,
+        advanced=advanced,
+        config_version=config_version,
+    )
 
 
 def validate_config(config: ApplicationConfig) -> tuple[bool, list[str]]:
@@ -425,10 +319,7 @@ def validate_config(config: ApplicationConfig) -> tuple[bool, list[str]]:
         errors.append("Recent files limit must be at least 1")
 
     # Validate computation config
-    if (
-        config.computation.numerical_precision < 1
-        or config.computation.numerical_precision > 50
-    ):
+    if config.computation.numerical_precision < 1 or config.computation.numerical_precision > 50:
         errors.append("Numerical precision must be between 1 and 50")
 
     if config.computation.max_iterations < 1:

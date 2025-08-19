@@ -5,17 +5,19 @@ This module provides pure functions for transforming data between different
 tab formats while maintaining data integrity and type safety.
 """
 
-import json
-from typing import Dict, Any, Optional, Union, List
+from typing import Dict, Optional, List, cast
 from datetime import datetime
 import pandas as pd
 import numpy as np
-from pathlib import Path
 
-
-# Data format definitions
-DataPayload = Dict[str, Any]
-TabData = Union[pd.DataFrame, Dict[str, Any], List[Any], str, float, int]
+from anafis.core.data_structures import (
+    DataPayload,
+    SerializedDataFrame,
+    SerializedNumpyArray,
+    FittingData,
+    MonteCarloResults,
+    TabData,
+)
 
 
 def create_data_message(
@@ -23,7 +25,7 @@ def create_data_message(
     source_tab_type: str,
     data_type: str,
     data: TabData,
-    metadata: Optional[Dict[str, Any]] = None,
+    metadata: Optional[Dict[str, object]] = None,
 ) -> DataPayload:
     """
     Create a standardized data message for the data bus.
@@ -49,7 +51,39 @@ def create_data_message(
     }
 
 
-def serialize_dataframe(df: pd.DataFrame) -> Dict[str, Any]:
+def deserialize_numpy_array(data: SerializedNumpyArray) -> np.ndarray:
+    """
+    Deserialize numpy array from data bus message.
+
+    Args:
+        data: Serialized array data
+
+    Returns:
+        Reconstructed numpy array
+    """
+    if data.get("type") != "numpy_array":
+        raise ValueError("Data is not a serialized numpy array")
+
+    arr = np.array(data["data"])
+
+    # Restore dtype if possible
+    if "dtype" in data:
+        try:
+            arr = arr.astype(data["dtype"])
+        except (ValueError, TypeError):
+            pass
+
+    # Restore shape if needed
+    if "shape" in data and arr.shape != tuple(data["shape"]):
+        try:
+            arr = arr.reshape(data["shape"])
+        except ValueError:
+            pass
+
+    return arr
+
+
+def serialize_dataframe(df: pd.DataFrame) -> SerializedDataFrame:
     """
     Serialize a pandas DataFrame for data bus transmission.
 
@@ -61,33 +95,21 @@ def serialize_dataframe(df: pd.DataFrame) -> Dict[str, Any]:
     """
     return {
         "type": "dataframe",
-        "data": df.to_dict("records"),
+        "data": cast(List[Dict[str, object]], df.to_dict(orient="records")),
         "columns": list(df.columns),
-        "dtypes": {col: str(dtype) for col, dtype in df.dtypes.items()},
+        "dtypes": {str(col): str(dtype) for col, dtype in df.dtypes.items()},
         "index": df.index.tolist(),
         "shape": df.shape,
     }
 
 
-def deserialize_dataframe(data: Dict[str, Any]) -> pd.DataFrame:
-    """
-    Deserialize DataFrame data from data bus message.
-
-    Args:
-        data: Serialized DataFrame data
-
-    Returns:
-        Reconstructed pandas DataFrame
-    """
-    if data.get("type") != "dataframe":
-        raise ValueError("Data is not a serialized DataFrame")
-
+def deserialize_dataframe(data: SerializedDataFrame) -> pd.DataFrame:
     df = pd.DataFrame(data["data"])
-    
+
     # Restore column order
     if "columns" in data:
         df = df.reindex(columns=data["columns"])
-    
+
     # Restore data types where possible
     if "dtypes" in data:
         for col, dtype_str in data["dtypes"].items():
@@ -104,11 +126,11 @@ def deserialize_dataframe(data: Dict[str, Any]) -> pd.DataFrame:
                 except (ValueError, TypeError):
                     # Keep original data if conversion fails
                     pass
-    
+
     return df
 
 
-def serialize_numpy_array(arr: np.ndarray) -> Dict[str, Any]:
+def serialize_numpy_array(arr: np.ndarray) -> SerializedNumpyArray:
     """
     Serialize a numpy array for data bus transmission.
 
@@ -126,51 +148,19 @@ def serialize_numpy_array(arr: np.ndarray) -> Dict[str, Any]:
     }
 
 
-def deserialize_numpy_array(data: Dict[str, Any]) -> np.ndarray:
-    """
-    Deserialize numpy array from data bus message.
-
-    Args:
-        data: Serialized array data
-
-    Returns:
-        Reconstructed numpy array
-    """
-    if data.get("type") != "numpy_array":
-        raise ValueError("Data is not a serialized numpy array")
-
-    arr = np.array(data["data"])
-    
-    # Restore dtype if possible
-    if "dtype" in data:
-        try:
-            arr = arr.astype(data["dtype"])
-        except (ValueError, TypeError):
-            pass
-    
-    # Restore shape if needed
-    if "shape" in data and arr.shape != tuple(data["shape"]):
-        try:
-            arr = arr.reshape(data["shape"])
-        except ValueError:
-            pass
-    
-    return arr
-
-
 def transform_spreadsheet_to_fitting(
-    spreadsheet_data: pd.DataFrame, 
-    x_column: str, 
+    spreadsheet_data: pd.DataFrame,
+    x_column: str,
     y_column: str,
-    weights_column: Optional[str] = None
-) -> Dict[str, Any]:
+    weights_column: Optional[str] = None,
+) -> FittingData:
     """
     Transform spreadsheet data for fitting tab consumption.
 
     Args:
         spreadsheet_data: Source DataFrame from spreadsheet
         x_column: Column name for x values
-        y_column: Column name for y values  
+        y_column: Column name for y values
         weights_column: Optional column name for weights
 
     Returns:
@@ -182,10 +172,12 @@ def transform_spreadsheet_to_fitting(
         raise ValueError(f"Y column '{y_column}' not found in data")
 
     # Create clean data for fitting
-    fitting_data = pd.DataFrame({
-        "x": spreadsheet_data[x_column],
-        "y": spreadsheet_data[y_column],
-    })
+    fitting_data = pd.DataFrame(
+        {
+            "x": spreadsheet_data[x_column],
+            "y": spreadsheet_data[y_column],
+        }
+    )
 
     # Add weights if specified
     if weights_column and weights_column in spreadsheet_data.columns:
@@ -202,14 +194,14 @@ def transform_spreadsheet_to_fitting(
             "y": y_column,
             "weights": weights_column,
         },
-        "original_shape": spreadsheet_data.shape,
-        "cleaned_shape": fitting_data.shape,
+        "original_shape": list(spreadsheet_data.shape),
+        "cleaned_shape": list(fitting_data.shape),
     }
 
 
 def transform_montecarlo_to_fitting(
-    montecarlo_results: Dict[str, Any]
-) -> Dict[str, Any]:
+    montecarlo_results: MonteCarloResults,
+) -> FittingData:
     """
     Transform Monte Carlo simulation results for fitting tab.
 
@@ -222,22 +214,25 @@ def transform_montecarlo_to_fitting(
     if "simulation_data" not in montecarlo_results:
         raise ValueError("Monte Carlo results missing simulation_data")
 
-    # Extract simulated data points
-    sim_data = montecarlo_results["simulation_data"]
-    
-    if isinstance(sim_data, dict) and "data" in sim_data:
-        df = deserialize_dataframe(sim_data)
-    elif isinstance(sim_data, pd.DataFrame):
-        df = sim_data
+    sim_data_raw = montecarlo_results["simulation_data"]
+    df: pd.DataFrame
+
+    if isinstance(sim_data_raw, pd.DataFrame):
+        df = sim_data_raw
+    elif isinstance(sim_data_raw, dict) and "data" in sim_data_raw:
+        # Here, sim_data_raw is a dict that matches SerializedDataFrame structure
+        df = deserialize_dataframe(sim_data_raw)
     else:
-        raise ValueError("Invalid Monte Carlo data format")
+        # This case should ideally not be reached if MonteCarloResults is correctly typed
+        # but it's good for robustness.
+        raise TypeError("Unsupported simulation_data format in MonteCarloResults")
 
     return {
         "type": "fitting_data",
         "data": serialize_dataframe(df),
-        "source_type": "montecarlo",
-        "simulation_parameters": montecarlo_results.get("parameters", {}),
-        "original_shape": df.shape,
+        "source_columns": {},
+        "original_shape": list(df.shape),
+        "cleaned_shape": list(df.shape),
     }
 
 
@@ -255,23 +250,17 @@ def validate_data_message(message: DataPayload) -> tuple[bool, List[str]]:
 
     # Check required fields
     required_fields = [
-        "source_tab_id", "source_tab_type", "data_type", 
-        "data", "timestamp", "version"
+        "source_tab_id",
+        "source_tab_type",
+        "data_type",
+        "data",
+        "timestamp",
+        "version",
     ]
-    
+
     for field in required_fields:
         if field not in message:
             errors.append(f"Missing required field: {field}")
-
-    # Validate field types
-    if "source_tab_id" in message and not isinstance(message["source_tab_id"], str):
-        errors.append("source_tab_id must be a string")
-    
-    if "source_tab_type" in message and not isinstance(message["source_tab_type"], str):
-        errors.append("source_tab_type must be a string")
-    
-    if "data_type" in message and not isinstance(message["data_type"], str):
-        errors.append("data_type must be a string")
 
     # Validate timestamp format
     if "timestamp" in message:
@@ -284,13 +273,19 @@ def validate_data_message(message: DataPayload) -> tuple[bool, List[str]]:
     if "data" in message and "data_type" in message:
         data_type = message["data_type"]
         data = message["data"]
-        
-        if data_type == "dataframe" and not isinstance(data, dict):
-            errors.append("DataFrame data must be a dictionary")
-        elif data_type == "numpy_array" and not isinstance(data, dict):
-            errors.append("NumPy array data must be a dictionary")
-        elif data_type == "parameters" and not isinstance(data, dict):
-            errors.append("Parameters data must be a dictionary")
+
+        if data_type == "dataframe":
+            if not isinstance(data, dict) or data.get("type") != "dataframe":
+                errors.append("DataFrame data must be a SerializedDataFrame")
+        elif data_type == "numpy_array":
+            if not isinstance(data, dict) or data.get("type") != "numpy_array":
+                errors.append("NumPy array data must be a SerializedNumpyArray")
+        elif data_type == "parameters":
+            if not isinstance(data, dict):
+                errors.append("Parameters data must be a dictionary")
+        elif data_type == "fitting_results":
+            if not isinstance(data, dict) or "model_type" not in data:
+                errors.append("Fitting results data must be FittingResults")
 
     return len(errors) == 0, errors
 
@@ -306,7 +301,7 @@ def extract_numerical_columns(df: pd.DataFrame) -> List[str]:
         List of column names with numerical data
     """
     numerical_columns = []
-    
+
     for col in df.columns:
         if pd.api.types.is_numeric_dtype(df[col]):
             numerical_columns.append(col)
@@ -317,11 +312,11 @@ def extract_numerical_columns(df: pd.DataFrame) -> List[str]:
                 numerical_columns.append(col)
             except (ValueError, TypeError):
                 pass
-    
+
     return numerical_columns
 
 
-def get_data_summary(data: TabData) -> Dict[str, Any]:
+def get_data_summary(data: TabData) -> Dict[str, object]:
     """
     Get a summary of data for display purposes.
 
@@ -331,30 +326,15 @@ def get_data_summary(data: TabData) -> Dict[str, Any]:
     Returns:
         Dictionary containing data summary
     """
-    summary = {"type": type(data).__name__}
-    
+    summary: Dict[str, object] = {"type": type(data).__name__}
+
     if isinstance(data, pd.DataFrame):
-        summary.update({
-            "shape": data.shape,
-            "columns": list(data.columns),
-            "dtypes": {col: str(dtype) for col, dtype in data.dtypes.items()},
-            "memory_usage": data.memory_usage(deep=True).sum(),
-        })
-    elif isinstance(data, np.ndarray):
-        summary.update({
-            "shape": data.shape,
-            "dtype": str(data.dtype),
-            "size": data.size,
-        })
-    elif isinstance(data, dict):
-        summary.update({
-            "keys": list(data.keys()),
-            "num_items": len(data),
-        })
-    elif isinstance(data, list):
-        summary.update({
-            "length": len(data),
-            "first_item_type": type(data[0]).__name__ if data else "empty",
-        })
-    
+        summary.update(
+            {
+                "shape": list(data.shape),
+                "columns": list(data.columns),
+                "dtypes": {str(col): str(dtype) for col, dtype in data.dtypes.items()},
+                "memory_usage": data.memory_usage(deep=True).sum(),
+            }
+        )
     return summary
