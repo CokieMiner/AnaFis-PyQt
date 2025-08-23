@@ -12,6 +12,7 @@ from anafis.gui.tabs.fitting_tab import FittingTab
 from anafis.gui.tabs.solver_tab import SolverTab
 from anafis.gui.tabs.montecarlo_tab import MonteCarloTab
 from anafis.gui.dialogs.config_dialog import ConfigDialog
+from anafis.gui.dialogs.uncertainty_calculator_dialog import UncertaintyCalculatorDialog
 from anafis.gui.shared.data_bus import get_global_data_bus
 
 from anafis.core.data_structures import TabState
@@ -58,35 +59,30 @@ class Notebook(QMainWindow):
                 project_menu.addSeparator()
 
             # New Tab Menu
-            new_menu = menu_bar.addMenu("&New")
-            if new_menu:
-                new_spreadsheet_action = QAction("New &Spreadsheet Tab", self)
-                new_spreadsheet_action.triggered.connect(lambda: self.new_tab("spreadsheet"))
-                new_menu.addAction(new_spreadsheet_action)
+            new_spreadsheet_action = QAction("New &Spreadsheet Tab", self)
+            new_spreadsheet_action.triggered.connect(lambda: self.new_tab("spreadsheet"))
+            menu_bar.addAction(new_spreadsheet_action)
 
-                new_fitting_action = QAction("New &Fitting Tab", self)
-                new_fitting_action.triggered.connect(lambda: self.new_tab("fitting"))
-                new_menu.addAction(new_fitting_action)
+            new_fitting_action = QAction("New &Fitting Tab", self)
+            new_fitting_action.triggered.connect(lambda: self.new_tab("fitting"))
+            menu_bar.addAction(new_fitting_action)
 
-                new_solver_action = QAction("New S&olver Tab", self)
-                new_solver_action.triggered.connect(lambda: self.new_tab("solver"))
-                new_menu.addAction(new_solver_action)
+            new_solver_action = QAction("New S&olver Tab", self)
+            new_solver_action.triggered.connect(lambda: self.new_tab("solver"))
+            menu_bar.addAction(new_solver_action)
 
-                new_montecarlo_action = QAction("New &Monte Carlo Tab", self)
-                new_montecarlo_action.triggered.connect(lambda: self.new_tab("montecarlo"))
-                new_menu.addAction(new_montecarlo_action)
+            new_montecarlo_action = QAction("New &Monte Carlo Tab", self)
+            new_montecarlo_action.triggered.connect(lambda: self.new_tab("montecarlo"))
+            menu_bar.addAction(new_montecarlo_action)
 
-            # Configurations Menu
-            config_menu = menu_bar.addMenu("&Configurations")
-            if config_menu:
-                open_config_action = QAction("&Open Configuration Editor", self)
-                open_config_action.triggered.connect(self._open_config_editor_placeholder)
-                config_menu.addAction(open_config_action)
+            new_uncertainty_action = QAction("&Uncertainty Calculator", self)
+            new_uncertainty_action.triggered.connect(self._open_uncertainty_calculator)
+            menu_bar.addAction(new_uncertainty_action)
 
-            # App Stats Action (can be in a separate "Help" or "View" menu later)
-            open_stats_action = QAction("App &Stats", self)
-            open_stats_action.triggered.connect(self._open_app_stats_placeholder)
-            menu_bar.addAction(open_stats_action)
+            # Settings Action
+            open_config_action = QAction("&Settings", self)
+            open_config_action.triggered.connect(self._open_config_editor_placeholder)
+            menu_bar.addAction(open_config_action)
 
         # Tab ID counter for unique identification
         self._tab_id_counter = 1
@@ -99,9 +95,6 @@ class Notebook(QMainWindow):
         widget = self.tabs.widget(index)
         if widget is not None and hasattr(widget, "set_tab_name"):
             widget.set_tab_name(new_name)
-
-        # Tab title is already updated by TabBar, no need to set it again here
-        # self.tabs.setTabText(index, new_name) # This is handled by TabBar
 
         # Update the tab's state in the session data if it's a persistent tab
         if widget is not None and hasattr(widget, "get_state"):
@@ -259,3 +252,7 @@ class Notebook(QMainWindow):
             QMessageBox.information(
                 self, "Configuration Editor", "Configuration saved. Some changes might require a restart."
             )
+
+    def _open_uncertainty_calculator(self) -> None:
+        dialog = UncertaintyCalculatorDialog(self)
+        dialog.show()

@@ -10,7 +10,7 @@ from __future__ import annotations
 from __future__ import annotations
 
 import logging
-from typing import Dict, Optional, List
+from typing import Optional, List
 
 from PyQt6.QtCore import pyqtSignal
 from PyQt6.QtWidgets import QWidget
@@ -18,7 +18,14 @@ from PyQt6.QtGui import QCloseEvent
 
 
 from anafis.gui.shared.data_bus import get_global_data_bus, DataBus
-from anafis.core.data_structures import DataPayload, TabData, PendingPublication, BusStatistics, TabState
+from anafis.core.data_structures import (
+    DataPayload,
+    TabData,
+    PendingPublication,
+    BusStatistics,
+    TabState,
+    MessageMetadata,
+)
 from anafis.core.config import ApplicationConfig
 
 
@@ -160,7 +167,7 @@ class DataBusEnabledTab(QWidget):
         self,
         data_type: str,
         data: TabData,
-        metadata: Optional[Dict[str, object]] = None,
+        metadata: Optional[MessageMetadata] = None,
     ) -> bool:
         """
         Publish data to the data bus.

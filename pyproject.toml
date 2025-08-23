@@ -159,6 +159,7 @@ module = [
     "emcee.*",
     "lmfit.*",
     "latex2sympy2.*",
+    "sympy.*",
 ]
 ignore_missing_imports = true
 

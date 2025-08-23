@@ -8,6 +8,7 @@ the notebook for tabs, and other main GUI components.
 import sys
 import logging
 from typing import Optional
+from pathlib import Path
 
 from PyQt6.QtWidgets import QApplication
 from PyQt6.QtCore import QTranslator
@@ -49,12 +50,12 @@ def create_gui_application(logger: logging.Logger, config: ApplicationConfig) ->
         else:
             logger.warning(f"Could not load translation for locale: {locale}")
 
-        # Set application icon (when available)
-        try:
-            icon = QIcon(":/icons/anafis.png")
-            app.setWindowIcon(icon)
-        except Exception as e:
-            logger.debug(f"Could not load application icon: {e}")
+        # Set application icon
+        icon_path = "anafis/assets/icon.png"
+        if Path(icon_path).exists():
+            app.setWindowIcon(QIcon(icon_path))
+        else:
+            logger.warning(f"Application icon not found at: {icon_path}")
 
         # Apply theme settings
         if config.general.theme.value != "system":

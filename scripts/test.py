@@ -37,68 +37,28 @@ Examples:
   python scripts/test.py --lint            # Run linting only
   python scripts/test.py --type-check      # Run type checking only
   python scripts/test.py --all             # Run everything
-        """
+        """,
     )
 
-    parser.add_argument(
-        "--fast",
-        action="store_true",
-        help="Skip slow tests"
-    )
+    parser.add_argument("--fast", action="store_true", help="Skip slow tests")
 
-    parser.add_argument(
-        "--coverage",
-        action="store_true",
-        help="Run tests with coverage report"
-    )
+    parser.add_argument("--coverage", action="store_true", help="Run tests with coverage report")
 
-    parser.add_argument(
-        "--gui",
-        action="store_true",
-        help="Run only GUI tests"
-    )
+    parser.add_argument("--gui", action="store_true", help="Run only GUI tests")
 
-    parser.add_argument(
-        "--core",
-        action="store_true",
-        help="Run only core tests"
-    )
+    parser.add_argument("--core", action="store_true", help="Run only core tests")
 
-    parser.add_argument(
-        "--integration",
-        action="store_true",
-        help="Run only integration tests"
-    )
+    parser.add_argument("--integration", action="store_true", help="Run only integration tests")
 
-    parser.add_argument(
-        "--lint",
-        action="store_true",
-        help="Run linting (flake8)"
-    )
+    parser.add_argument("--lint", action="store_true", help="Run linting (flake8)")
 
-    parser.add_argument(
-        "--format",
-        action="store_true",
-        help="Format code with black"
-    )
+    parser.add_argument("--format", action="store_true", help="Format code with black")
 
-    parser.add_argument(
-        "--type-check",
-        action="store_true",
-        help="Run type checking (mypy)"
-    )
+    parser.add_argument("--type-check", action="store_true", help="Run type checking (mypy)")
 
-    parser.add_argument(
-        "--all",
-        action="store_true",
-        help="Run all checks (tests, linting, type checking)"
-    )
+    parser.add_argument("--all", action="store_true", help="Run all checks (tests, linting, type checking)")
 
-    parser.add_argument(
-        "--verbose", "-v",
-        action="store_true",
-        help="Verbose output"
-    )
+    parser.add_argument("--verbose", "-v", action="store_true", help="Verbose output")
 
     args = parser.parse_args()
 

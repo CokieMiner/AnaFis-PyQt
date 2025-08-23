@@ -97,12 +97,14 @@ def test_basic_functionality():
     try:
         # Test logging setup
         from anafis.core.logging_config import quick_setup
+
         logger = quick_setup(debug=False)
         logger.info("Test log message")
         print("OK: Logging system")
 
         # Test configuration
         from anafis.core.config import create_default_config, validate_config
+
         config = create_default_config()
         is_valid, errors = validate_config(config)
         if is_valid:
@@ -113,6 +115,7 @@ def test_basic_functionality():
 
         # Test data structures
         from anafis.core.data_structures import create_spreadsheet_state, create_application_state
+
         sheet_state = create_spreadsheet_state()
         app_state = create_application_state()
         print("OK: Data structures")
@@ -137,6 +140,7 @@ def test_application_entry():
 
         # Test argument parsing
         import sys
+
         old_argv = sys.argv
         sys.argv = ["anafis", "--help"]
 

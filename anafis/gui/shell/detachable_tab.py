@@ -9,22 +9,24 @@ from PyQt6.QtWidgets import (
     QInputDialog,
     QLineEdit,
 )
-from PyQt6.QtCore import Qt, QPoint, pyqtSignal
-from PyQt6.QtGui import QMouseEvent, QCloseEvent
+from PyQt6.QtCore import Qt, QPoint, pyqtSignal, QMimeData
+from PyQt6.QtGui import QMouseEvent, QCloseEvent, QDrag
 
 
 class TabBar(QTabBar):
     def __init__(self, parent: Optional[QTabWidget] = None) -> None:
         super().__init__(parent)
         self.drag_start_pos = QPoint()
+        self.dragging = False # Add a flag to track if a drag is in progress
 
     def mousePressEvent(self, event: Optional[QMouseEvent]) -> None:
         if event and event.button() == Qt.MouseButton.LeftButton:
             self.drag_start_pos = event.pos()
+            self.dragging = False # Reset dragging flag on mouse press
         super().mousePressEvent(event)
 
     def mouseMoveEvent(self, event: Optional[QMouseEvent]) -> None:
-        if event and event.buttons() == Qt.MouseButton.LeftButton:
+        if event and event.buttons() == Qt.MouseButton.LeftButton and not self.dragging: # Only initiate if not already dragging
             distance = (event.pos() - self.drag_start_pos).manhattanLength()
             style = QApplication.style()
             if style:
@@ -36,7 +38,13 @@ class TabBar(QTabBar):
                         parent = self.parent()
                         if parent and hasattr(parent, "detach_tab"):
                             parent.detach_tab(index)
+                            self.dragging = True # Set dragging flag to true after initiating detach
         super().mouseMoveEvent(event)
+
+    def mouseReleaseEvent(self, event: Optional[QMouseEvent]) -> None: # Add mouseReleaseEvent to reset flag
+        if event and event.button() == Qt.MouseButton.LeftButton:
+            self.dragging = False
+        super().mouseReleaseEvent(event)
 
     def mouseDoubleClickEvent(self, event: Optional[QMouseEvent]) -> None:
         if event and event.button() == Qt.MouseButton.LeftButton:
@@ -60,6 +68,47 @@ class TabBar(QTabBar):
         super().mouseDoubleClickEvent(event)
 
 
+class DetachedTabBar(QTabBar):
+    def __init__(self, parent: Optional[QTabWidget] = None) -> None:
+        super().__init__(parent)
+        self.drag_start_pos = QPoint()
+
+    def mousePressEvent(self, event: Optional[QMouseEvent]) -> None:
+        if event and event.button() == Qt.MouseButton.LeftButton:
+            self.drag_start_pos = event.pos()
+        super().mousePressEvent(event)
+
+    def mouseMoveEvent(self, event: Optional[QMouseEvent]) -> None:
+        if event and event.buttons() == Qt.MouseButton.LeftButton:
+            distance = (event.pos() - self.drag_start_pos).manhattanLength()
+            style = QApplication.style()
+            if style:
+                overlap = style.pixelMetric(QStyle.PixelMetric.PM_TabBarTabHSpace)
+
+                if distance >= QApplication.startDragDistance() + overlap:
+                    index = self.tabAt(self.drag_start_pos)
+                    if index >= 0:
+                        # Get widget and tab_title before initiating drag
+                        widget = self.parent().widget(index)
+                        tab_title = self.tabText(index)
+
+                        # Initiate drag operation
+                        mime_data = QMimeData()
+                        mime_data.setData('application/x-anafis-tab-data', b'dummy_data') # Placeholder data
+
+                        drag = QDrag(self)
+                        drag.setMimeData(mime_data)
+                        # Store the actual widget and title in the drag object's properties
+                        drag.setProperty('widget', widget)
+                        drag.setProperty('tab_title', tab_title)
+                        drag.setProperty('detached_window_id', id(self.parent().parent())) # Pass ID of DetachedWindow
+
+                        # Execute the drag
+                        print(f"DetachedTabBar: Initiating drag for tab: {tab_title}, widget: {widget}, detached_window_id: {id(self.parent().parent())}")
+                        drag.exec(Qt.DropAction.MoveAction)
+        super().mouseMoveEvent(event)
+
+
 class DetachedWindow(QMainWindow):
     """A detached window that can be reattached."""
 
@@ -72,11 +121,16 @@ class DetachedWindow(QMainWindow):
         parent_widget: Optional[QTabWidget] = None,
     ) -> None:
         super().__init__()
-        self.widget = widget
+        self.original_widget = widget # Store original widget
         self.tab_title = tab_title
         self.parent_widget = parent_widget
 
-        self.setCentralWidget(widget)
+        # Create an internal QTabWidget
+        self.internal_tab_widget = QTabWidget()
+        self.internal_tab_widget.setTabBar(DetachedTabBar(self.internal_tab_widget))
+        self.internal_tab_widget.addTab(widget, tab_title)
+        self.setCentralWidget(self.internal_tab_widget)
+
         self.setWindowTitle(f"ANAFIS - {tab_title}")
         self.resize(800, 600)
 
@@ -91,13 +145,15 @@ class DetachedWindow(QMainWindow):
 
     def closeEvent(self, event: Optional[QCloseEvent]) -> None:
         """Handle window close event."""
-        self.window_closed.emit(self, self.widget)
+        self.window_closed.emit(self, self.original_widget)
         super().closeEvent(event)
 
     def reattach(self) -> None:
         """Reattach this window to the main tab widget."""
         if self.parent_widget and hasattr(self.parent_widget, "reattach_tab"):
-            self.parent_widget.reattach_tab(self.widget, self.tab_title)
+            # Get the widget from the internal tab widget
+            reattach_widget = self.internal_tab_widget.widget(0)
+            self.parent_widget.reattach_tab(reattach_widget, self.tab_title)
             self.close()
 
 
@@ -108,6 +164,45 @@ class DetachableTabWidget(QTabWidget):
         super().__init__(parent)
         self.setTabBar(TabBar(self))
         self.detached_windows: List[DetachedWindow] = []
+        self.setAcceptDrops(True)
+
+    def dragEnterEvent(self, event: 'QDragEnterEvent') -> None:
+        # Placeholder: Accept the event if it contains our custom tab data
+        # We'll define the custom MIME type later when initiating the drag
+        if event.mimeData().hasFormat('application/x-anafis-tab-data'):
+            event.acceptProposedAction()
+        else:
+            event.ignore()
+
+    def dragMoveEvent(self, event: 'QDragMoveEvent') -> None:
+        # Placeholder: Provide visual feedback during drag
+        if event.mimeData().hasFormat('application/x-anafis-tab-data'):
+            event.acceptProposedAction()
+        else:
+            event.ignore()
+
+    def dropEvent(self, event: 'QDropEvent') -> None:
+        if event.mimeData().hasFormat('application/x-anafis-tab-data'):
+            # Extract widget and title from the QDrag object's properties
+            drag = event.source() # The QDrag object is the source of the event
+            widget = drag.property('widget')
+            tab_title = drag.property('tab_title')
+            detached_window_id = drag.property('detached_window_id')
+
+            if widget and tab_title:
+                print(f"DetachableTabWidget: Drop received. Widget: {widget}, Title: {tab_title}, Detached Window ID: {detached_window_id}")
+                self.reattach_tab(widget, tab_title)
+                event.acceptProposedAction()
+
+                # Close the detached window that initiated the drag
+                for window in self.detached_windows:
+                    if id(window) == detached_window_id:
+                        window.close()
+                        break # Found and closed, exit loop
+            else:
+                event.ignore()
+        else:
+            event.ignore()
 
     def _emit_tab_renamed_signal(self, index: int, new_name: str) -> None:
         self.tab_renamed.emit(index, new_name)

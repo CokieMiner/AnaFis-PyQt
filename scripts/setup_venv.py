@@ -32,6 +32,7 @@ def main():
     if venv_path.exists():
         print("Removing existing virtual environment...")
         import shutil
+
         try:
             shutil.rmtree(venv_path)
         except PermissionError:

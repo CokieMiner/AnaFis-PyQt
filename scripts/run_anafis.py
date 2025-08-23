@@ -20,38 +20,18 @@ Examples:
   python scripts/run_anafis.py --debug        # Run with debug logging
   python scripts/run_anafis.py --no-gui       # Run without GUI (testing)
   python scripts/run_anafis.py --reset-config # Reset configuration
-        """
+        """,
     )
 
-    parser.add_argument(
-        "--debug",
-        action="store_true",
-        help="Enable debug logging"
-    )
+    parser.add_argument("--debug", action="store_true", help="Enable debug logging")
 
-    parser.add_argument(
-        "--no-gui",
-        action="store_true",
-        help="Run without GUI (for testing)"
-    )
+    parser.add_argument("--no-gui", action="store_true", help="Run without GUI (for testing)")
 
-    parser.add_argument(
-        "--reset-config",
-        action="store_true",
-        help="Reset configuration to defaults"
-    )
+    parser.add_argument("--reset-config", action="store_true", help="Reset configuration to defaults")
 
-    parser.add_argument(
-        "--config-dir",
-        type=Path,
-        help="Custom configuration directory"
-    )
+    parser.add_argument("--config-dir", type=Path, help="Custom configuration directory")
 
-    parser.add_argument(
-        "--log-dir",
-        type=Path,
-        help="Custom log directory"
-    )
+    parser.add_argument("--log-dir", type=Path, help="Custom log directory")
 
     args = parser.parse_args()
 

@@ -8,7 +8,7 @@ using functional programming patterns and immutable data structures.
 import json
 import sys
 from pathlib import Path
-from typing import Dict, Optional, cast, Literal
+from typing import Dict, Optional, cast, Literal, Tuple
 from dataclasses import asdict
 from enum import Enum
 from anafis.core.data_structures import (
@@ -22,6 +22,7 @@ from anafis.core.data_structures import (
     Language,
     UpdateChannel,
     ConfigDict,
+    JSON_VALUE,
 )
 
 
@@ -112,7 +113,10 @@ def config_to_dict(config: ApplicationConfig) -> ConfigDict:
 
         for key, value in section_dict.items():
             if isinstance(value, Enum):
-                section_dict[key] = value.value
+                # TODO: This 'Incompatible types in assignment' error persists due to mypy's strictness
+                # with Enum.value and JSON_VALUE. It appears to be a mypy limitation under strict type checking.
+                enum_val: JSON_VALUE = value.value
+                section_dict[key] = enum_val
             elif isinstance(value, dict):
                 # Handle nested dictionaries (like floating_tool_shortcuts)
                 for nested_key, nested_value in value.items():
@@ -136,7 +140,7 @@ def dict_to_config(config_dict: ConfigDict) -> ApplicationConfig:
         ApplicationConfig instance
     """
 
-    def convert_enums(section_name: str, section_dict: Dict[str, object]) -> Dict[str, object]:
+    def convert_enums(section_name: str, section_dict: Dict[str, JSON_VALUE]) -> Dict[str, JSON_VALUE]:
         """Convert string values back to enums where appropriate."""
         converted = section_dict.copy()
 
@@ -165,15 +169,77 @@ def dict_to_config(config_dict: ConfigDict) -> ApplicationConfig:
     advanced_dict = config_dict.get("advanced", {})
 
     # Create section instances
-    general = GeneralConfig(**general_dict)  # type: ignore
-    computation = ComputationConfig(**computation_dict)  # type: ignore
-    interface = InterfaceConfig(**interface_dict)  # type: ignore
-    updates = UpdateConfig(**updates_dict)  # type: ignore
-    advanced = AdvancedConfig(**advanced_dict)  # type: ignore
+    general = _dict_to_general_config(general_dict)
+    computation = _dict_to_computation_config(computation_dict)
+    interface = _dict_to_interface_config(interface_dict)
+    updates = _dict_to_update_config(updates_dict)
+    advanced = _dict_to_advanced_config(advanced_dict)
 
     config_version = config_dict.get("config_version", "1.0")
 
     return create_application_config(general, computation, interface, updates, advanced, config_version)
+
+
+def _dict_to_general_config(data: Dict[str, JSON_VALUE]) -> GeneralConfig:
+    return GeneralConfig(
+        language=Language(data.get("language", Language.ENGLISH.value)),
+        theme=Theme(data.get("theme", Theme.SYSTEM.value)),
+        startup_behavior=cast(str, data.get("startup_behavior", "restore_session")),
+        auto_save_interval=cast(int, data.get("auto_save_interval", 300)),
+        recent_files_limit=cast(int, data.get("recent_files_limit", 10)),
+        show_splash_screen=cast(bool, data.get("show_splash_screen", True)),
+        check_updates_on_startup=cast(bool, data.get("check_updates_on_startup", True)),
+    )
+
+
+def _dict_to_computation_config(data: Dict[str, JSON_VALUE]) -> ComputationConfig:
+    return ComputationConfig(
+        default_fitting_method=cast(str, data.get("default_fitting_method", "lm")),
+        numerical_precision=cast(int, data.get("numerical_precision", 15)),
+        max_iterations=cast(int, data.get("max_iterations", 1000)),
+        convergence_tolerance=cast(float, data.get("convergence_tolerance", 1e-8)),
+        use_gpu_acceleration=cast(bool, data.get("use_gpu_acceleration", True)),
+        gpu_device_id=cast(Optional[int], data.get("gpu_device_id", None)),
+        parallel_processing=cast(bool, data.get("parallel_processing", True)),
+        max_workers=cast(Optional[int], data.get("max_workers", None)),
+    )
+
+
+def _dict_to_interface_config(data: Dict[str, JSON_VALUE]) -> InterfaceConfig:
+    return InterfaceConfig(
+        tab_detach_enabled=cast(bool, data.get("tab_detach_enabled", True)),
+        tab_close_confirmation=cast(bool, data.get("tab_close_confirmation", True)),
+        show_tooltips=cast(bool, data.get("show_tooltips", True)),
+        animation_enabled=cast(bool, data.get("animation_enabled", True)),
+        status_bar_visible=cast(bool, data.get("status_bar_visible", True)),
+        toolbar_visible=cast(bool, data.get("toolbar_visible", True)),
+        floating_tool_shortcuts=cast(Dict[str, str], data.get("floating_tool_shortcuts", {})),
+        plot_default_style=cast(str, data.get("plot_default_style", "seaborn-v0_8")),
+        plot_dpi=cast(int, data.get("plot_dpi", 100)),
+    )
+
+
+def _dict_to_update_config(data: Dict[str, JSON_VALUE]) -> UpdateConfig:
+    return UpdateConfig(
+        auto_check_enabled=cast(bool, data.get("auto_check_enabled", True)),
+        check_interval_hours=cast(int, data.get("check_interval_hours", 24)),
+        update_channel=UpdateChannel(data.get("update_channel", UpdateChannel.STABLE.value)),
+        auto_download=cast(bool, data.get("auto_download", False)),
+        notify_beta_releases=cast(bool, data.get("notify_beta_releases", False)),
+        github_api_token=cast(Optional[str], data.get("github_api_token", None)),
+    )
+
+
+def _dict_to_advanced_config(data: Dict[str, JSON_VALUE]) -> AdvancedConfig:
+    return AdvancedConfig(
+        debug_mode=cast(bool, data.get("debug_mode", False)),
+        log_level=cast(str, data.get("log_level", "INFO")),
+        memory_limit_mb=cast(Optional[int], data.get("memory_limit_mb", None)),
+        cache_size_mb=cast(int, data.get("cache_size_mb", 100)),
+        enable_profiling=cast(bool, data.get("enable_profiling", False)),
+        experimental_features=cast(bool, data.get("experimental_features", False)),
+        custom_plugin_paths=cast(Tuple[str, ...], data.get("custom_plugin_paths", ())),
+    )
 
 
 def save_config(config: ApplicationConfig, config_file: Optional[Path] = None) -> bool:
@@ -238,7 +304,7 @@ def load_config(config_file: Optional[Path] = None) -> ApplicationConfig:
 
 
 def update_config(
-    current_config: ApplicationConfig, section: str, updates_dict: Dict[str, object]
+    current_config: ApplicationConfig, section: str, updates_dict: Dict[str, JSON_VALUE]
 ) -> ApplicationConfig:
     """
     Create a new configuration with updated values in a specific section.

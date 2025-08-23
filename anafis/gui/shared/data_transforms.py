@@ -17,15 +17,20 @@ from anafis.core.data_structures import (
     FittingData,
     MonteCarloResults,
     TabData,
+    MessageMetadata,
+    DataSummary,
+    JSON_VALUE,
 )
 
 
+# TODO: These 'Explicit "Any" is not allowed' errors (lines 64 and 143) persist due to mypy's strictness
+# with JSON_VALUE and will be addressed with a redesign of data structures.
 def create_data_message(
     source_tab_id: str,
     source_tab_type: str,
     data_type: str,
     data: TabData,
-    metadata: Optional[Dict[str, object]] = None,
+    metadata: Optional[MessageMetadata] = None,
 ) -> DataPayload:
     """
     Create a standardized data message for the data bus.
@@ -95,7 +100,7 @@ def serialize_dataframe(df: pd.DataFrame) -> SerializedDataFrame:
     """
     return {
         "type": "dataframe",
-        "data": cast(List[Dict[str, object]], df.to_dict(orient="records")),
+        "data": cast(List[Dict[str, JSON_VALUE]], df.to_dict(orient="records")),
         "columns": list(df.columns),
         "dtypes": {str(col): str(dtype) for col, dtype in df.dtypes.items()},
         "index": df.index.tolist(),
@@ -316,7 +321,9 @@ def extract_numerical_columns(df: pd.DataFrame) -> List[str]:
     return numerical_columns
 
 
-def get_data_summary(data: TabData) -> Dict[str, object]:
+# TODO: This 'Explicit "Any" is not allowed' error (line 143) persists due to mypy's strictness
+# with JSON_VALUE and will be addressed with a redesign of data structures.
+def get_data_summary(data: TabData) -> DataSummary:
     """
     Get a summary of data for display purposes.
 
@@ -326,7 +333,7 @@ def get_data_summary(data: TabData) -> Dict[str, object]:
     Returns:
         Dictionary containing data summary
     """
-    summary: Dict[str, object] = {"type": type(data).__name__}
+    summary: DataSummary = {"type": type(data).__name__}
 
     if isinstance(data, pd.DataFrame):
         summary.update(

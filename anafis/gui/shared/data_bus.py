@@ -17,7 +17,7 @@ from anafis.gui.shared.data_transforms import (
     validate_data_message,
     get_data_summary,
 )
-from anafis.core.data_structures import TabRegistration, BusStatistics, RegisteredTabs
+from anafis.core.data_structures import TabRegistration, BusStatistics, RegisteredTabs, MessageMetadata
 
 logger = logging.getLogger(__name__)
 
@@ -251,7 +251,7 @@ class DataBus(QObject):
         source_tab_id: str,
         data_type: str,
         data: TabData,
-        metadata: Optional[Dict[str, object]] = None,
+        metadata: Optional[MessageMetadata] = None,
     ) -> bool:
         """
         Publish data to the bus.

@@ -3,7 +3,7 @@ Spreadsheet tab implementation with data bus integration.
 """
 
 import logging
-from typing import Optional, Dict, Any, cast
+from typing import Optional, cast
 import pandas as pd
 from PyQt6.QtWidgets import (
     QWidget,
@@ -24,7 +24,7 @@ from anafis.gui.shared.data_transforms import (
     transform_spreadsheet_to_fitting,
 )
 from anafis.gui.shared.import_dialog import ImportDialog
-from anafis.core.data_structures import SpreadsheetState, DataPayload, SerializedDataFrame, TabState
+from anafis.core.data_structures import SpreadsheetState, DataPayload, SerializedDataFrame, TabState, MessageMetadata
 
 
 logger = logging.getLogger(__name__)
@@ -102,10 +102,14 @@ class SpreadsheetTab(DataBusEnabledTab, SpreadsheetTabMixin):
                 self.status_label.setText(f"Loaded: {dialog.file_path}")
 
                 # Publish raw dataframe data
+                metadata_dict = {}
+                if dialog.file_path is not None:
+                    metadata_dict["source_file"] = dialog.file_path
+
                 self.publish_data(
                     data_type="dataframe",
                     data=serialize_dataframe(df),
-                    metadata={"source_file": dialog.file_path},
+                    metadata=cast(MessageMetadata, metadata_dict),
                 )
 
     @pyqtSlot()
@@ -190,7 +194,7 @@ class SpreadsheetTab(DataBusEnabledTab, SpreadsheetTabMixin):
             self.info_label.setText(f"Data: {rows} rows × {cols} columns ({numerical_cols} numerical)")
 
     @pyqtSlot(dict)
-    def _handle_data_received_ui(self, message: Dict[str, Any]) -> None:
+    def _handle_data_received_ui(self, message: DataPayload) -> None:
         """Handle data received through UI (slot for signal)."""
         self.status_label.setText(f"Received {message['data_type']} from {message['source_tab_id']}")
 

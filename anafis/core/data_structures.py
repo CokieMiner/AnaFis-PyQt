@@ -10,6 +10,8 @@ from pathlib import Path
 import pandas as pd
 import networkx as nx
 
+JSON_VALUE = Union[str, int, float, bool, None]
+
 
 @dataclass(frozen=True)
 class Parameter:
@@ -28,6 +30,14 @@ class Parameter:
             raise ValueError("value cannot be less than min_value")
         if self.max_value is not None and self.value > self.max_value:
             raise ValueError("value cannot be greater than max_value")
+
+
+class MessageMetadata(TypedDict, total=False):
+    source_file: str
+    source_tab: str
+    transformation: str
+    model_type: str
+    description: str
 
 
 class FittingMethod(Enum):
@@ -97,7 +107,7 @@ class LoggerConfig(TypedDict, total=False):
 class PendingPublication(TypedDict):
     data_type: str
     data: "TabData"
-    metadata: Optional[Dict[str, object]]
+    metadata: Optional[MessageMetadata]
 
 
 class BusStatistics(TypedDict):
@@ -123,14 +133,14 @@ class DataPayload(TypedDict, total=False):
     source_tab_type: str
     data_type: str
     data: "TabData"
-    metadata: Dict[str, object]
+    metadata: MessageMetadata
     timestamp: str
     version: str
 
 
 class SerializedDataFrame(TypedDict):
     type: str
-    data: List[Dict[str, object]]
+    data: List[Dict[str, JSON_VALUE]]
     columns: List[str]
     dtypes: Dict[str, str]
     index: List[object]
@@ -139,7 +149,7 @@ class SerializedDataFrame(TypedDict):
 
 class SerializedNumpyArray(TypedDict):
     type: str
-    data: List[object]
+    data: List[JSON_VALUE]
     dtype: str
     shape: tuple[int, ...]
 
@@ -155,7 +165,7 @@ class FittingData(TypedDict):
 class MonteCarloResults(TypedDict):
     type: str
     simulation_data: Union[SerializedDataFrame, pd.DataFrame]
-    parameters: Dict[str, object]
+    parameters: Dict[str, JSON_VALUE]
 
 
 class TabState(TypedDict, total=False):
@@ -296,11 +306,11 @@ class ApplicationConfig(NamedTuple):
 
 
 class ConfigDict(TypedDict):
-    general: Dict[str, object]
-    computation: Dict[str, object]
-    interface: Dict[str, object]
-    updates: Dict[str, object]
-    advanced: Dict[str, object]
+    general: Dict[str, JSON_VALUE]
+    computation: Dict[str, JSON_VALUE]
+    interface: Dict[str, JSON_VALUE]
+    updates: Dict[str, JSON_VALUE]
+    advanced: Dict[str, JSON_VALUE]
     config_version: str
 
 
@@ -318,8 +328,8 @@ class TabRegistration:
 
 TabData = Union[
     pd.DataFrame,
-    Dict[str, object],
-    List[object],
+    Dict[str, JSON_VALUE],
+    List[JSON_VALUE],
     str,
     float,
     int,
@@ -328,3 +338,11 @@ TabData = Union[
     SerializedDataFrame,
     ApplicationConfig,
 ]
+
+
+class DataSummary(TypedDict, total=False):
+    type: str
+    shape: List[int]
+    columns: List[str]
+    dtypes: Dict[str, str]
+    memory_usage: int
