@@ -10,7 +10,9 @@ from pathlib import Path
 import pandas as pd
 import networkx as nx
 
-JSON_VALUE = Union[str, int, float, bool, None]
+JSON_VALUE = Union[str, int, float, bool, None, "JsonDict", "JsonList"]
+JsonDict = Dict[str, JSON_VALUE]
+JsonList = List[JSON_VALUE]
 
 
 @dataclass(frozen=True)
@@ -140,16 +142,16 @@ class DataPayload(TypedDict, total=False):
 
 class SerializedDataFrame(TypedDict):
     type: str
-    data: List[Dict[str, JSON_VALUE]]
+    data: List[Dict[str, Union[str, int, float, bool, None]]]
     columns: List[str]
     dtypes: Dict[str, str]
-    index: List[object]
+    index: List[Union[str, int, float, None]]
     shape: tuple[int, ...]
 
 
 class SerializedNumpyArray(TypedDict):
     type: str
-    data: List[JSON_VALUE]
+    data: List[Union[str, int, float, bool, None]]
     dtype: str
     shape: tuple[int, ...]
 
@@ -262,6 +264,24 @@ class InterfaceConfig:
     )
     plot_default_style: str = "seaborn-v0_8"
     plot_dpi: int = 100
+
+    # Tab behavior
+    tab_drag_threshold: int = 10
+    tab_detach_threshold: int = 50
+    enable_cross_window_drag: bool = True
+    animate_tab_operations: bool = True
+
+    # Window management
+    smart_window_positioning: bool = True
+    cascade_offset_x: int = 30
+    cascade_offset_y: int = 30
+    default_detached_window_width: int = 800
+    default_detached_window_height: int = 600
+
+    # Visual feedback
+    show_drag_preview: bool = True
+    show_drop_indicators: bool = True
+    drag_preview_opacity: float = 0.7
 
 
 @dataclass(frozen=True)

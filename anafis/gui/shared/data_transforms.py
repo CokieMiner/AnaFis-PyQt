@@ -5,7 +5,7 @@ This module provides pure functions for transforming data between different
 tab formats while maintaining data integrity and type safety.
 """
 
-from typing import Dict, Optional, List, cast
+from typing import Dict, Optional, List, cast, Union
 from datetime import datetime
 import pandas as pd
 import numpy as np
@@ -19,7 +19,6 @@ from anafis.core.data_structures import (
     TabData,
     MessageMetadata,
     DataSummary,
-    JSON_VALUE,
 )
 
 
@@ -45,12 +44,13 @@ def create_data_message(
     Returns:
         Standardized data message dictionary
     """
+    empty_metadata: MessageMetadata = MessageMetadata()
     return {
         "source_tab_id": source_tab_id,
         "source_tab_type": source_tab_type,
         "data_type": data_type,
         "data": data,
-        "metadata": metadata or {},
+        "metadata": metadata if metadata is not None else empty_metadata,
         "timestamp": datetime.now().isoformat(),
         "version": "1.0",
     }
@@ -100,7 +100,7 @@ def serialize_dataframe(df: pd.DataFrame) -> SerializedDataFrame:
     """
     return {
         "type": "dataframe",
-        "data": cast(List[Dict[str, JSON_VALUE]], df.to_dict(orient="records")),
+        "data": cast(List[Dict[str, Union[str, int, float, bool, None]]], df.to_dict(orient="records")),
         "columns": list(df.columns),
         "dtypes": {str(col): str(dtype) for col, dtype in df.dtypes.items()},
         "index": df.index.tolist(),
@@ -333,15 +333,13 @@ def get_data_summary(data: TabData) -> DataSummary:
     Returns:
         Dictionary containing data summary
     """
-    summary: DataSummary = {"type": type(data).__name__}
+    summary: DataSummary = cast(DataSummary, {"type": type(data).__name__})
 
     if isinstance(data, pd.DataFrame):
-        summary.update(
-            {
-                "shape": list(data.shape),
-                "columns": list(data.columns),
-                "dtypes": {str(col): str(dtype) for col, dtype in data.dtypes.items()},
-                "memory_usage": data.memory_usage(deep=True).sum(),
-            }
-        )
+        update_dict: DataSummary = DataSummary()
+        update_dict["shape"] = list(data.shape)
+        update_dict["columns"] = list(data.columns)
+        update_dict["dtypes"] = {str(col): str(dtype) for col, dtype in data.dtypes.items()}
+        update_dict["memory_usage"] = data.memory_usage(deep=True).sum()
+        summary.update(update_dict)
     return summary

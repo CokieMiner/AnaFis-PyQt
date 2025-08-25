@@ -8,7 +8,7 @@ using functional programming patterns and immutable data structures.
 import json
 import sys
 from pathlib import Path
-from typing import Dict, Optional, cast, Literal, Tuple
+from typing import Dict, Optional, cast, Literal, Tuple, Union
 from dataclasses import asdict
 from enum import Enum
 from anafis.core.data_structures import (
@@ -113,15 +113,14 @@ def config_to_dict(config: ApplicationConfig) -> ConfigDict:
 
         for key, value in section_dict.items():
             if isinstance(value, Enum):
-                # TODO: This 'Incompatible types in assignment' error persists due to mypy's strictness
-                # with Enum.value and JSON_VALUE. It appears to be a mypy limitation under strict type checking.
-                enum_val: JSON_VALUE = value.value
-                section_dict[key] = enum_val
+                enum_str_value: str = value.value  # Explicitly type as str
+                section_dict[key] = enum_str_value
             elif isinstance(value, dict):
                 # Handle nested dictionaries (like floating_tool_shortcuts)
                 for nested_key, nested_value in value.items():
                     if isinstance(nested_value, Enum):
-                        value[nested_key] = nested_value.value
+                        nested_enum_str_value: str = nested_value.value  # Explicitly type as str
+                        value[nested_key] = nested_enum_str_value
         config_dict[cast(Literal["general", "computation", "interface", "updates", "advanced"], section_name)] = (
             section_dict
         )
@@ -140,9 +139,9 @@ def dict_to_config(config_dict: ConfigDict) -> ApplicationConfig:
         ApplicationConfig instance
     """
 
-    def convert_enums(section_name: str, section_dict: Dict[str, JSON_VALUE]) -> Dict[str, JSON_VALUE]:
+    def convert_enums(section_name: str, section_dict: Dict[str, JSON_VALUE]) -> Dict[str, Union[JSON_VALUE, Enum]]:
         """Convert string values back to enums where appropriate."""
-        converted = section_dict.copy()
+        converted: Dict[str, Union[JSON_VALUE, Enum]] = {k: v for k, v in section_dict.items()}
 
         # Define enum mappings for each section
         enum_mappings = {
@@ -154,8 +153,10 @@ def dict_to_config(config_dict: ConfigDict) -> ApplicationConfig:
             for field, enum_class in cast(Dict[str, type[Enum]], enum_mappings[section_name]).items():
                 if field in converted:
                     try:
-                        converted[field] = enum_class(converted[field])
-                    except ValueError:
+                        value = converted[field]
+                        if isinstance(value, (str, int, float)):
+                            converted[field] = enum_class(value)
+                    except (ValueError, TypeError):
                         # Keep original value if enum conversion fails
                         pass
 
@@ -180,7 +181,7 @@ def dict_to_config(config_dict: ConfigDict) -> ApplicationConfig:
     return create_application_config(general, computation, interface, updates, advanced, config_version)
 
 
-def _dict_to_general_config(data: Dict[str, JSON_VALUE]) -> GeneralConfig:
+def _dict_to_general_config(data: Dict[str, Union[JSON_VALUE, Enum]]) -> GeneralConfig:
     return GeneralConfig(
         language=Language(data.get("language", Language.ENGLISH.value)),
         theme=Theme(data.get("theme", Theme.SYSTEM.value)),
@@ -219,7 +220,7 @@ def _dict_to_interface_config(data: Dict[str, JSON_VALUE]) -> InterfaceConfig:
     )
 
 
-def _dict_to_update_config(data: Dict[str, JSON_VALUE]) -> UpdateConfig:
+def _dict_to_update_config(data: Dict[str, Union[JSON_VALUE, Enum]]) -> UpdateConfig:
     return UpdateConfig(
         auto_check_enabled=cast(bool, data.get("auto_check_enabled", True)),
         check_interval_hours=cast(int, data.get("check_interval_hours", 24)),
